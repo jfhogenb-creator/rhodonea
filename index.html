@@ -1,0 +1,1818 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rhodonea Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@1,500&display=swap">
+<style>
+/* Modern studio: near-black neutral surfaces with hairline borders; the artwork is the only color on screen.
+   One type family (Geist) with its mono for numbers and small labels; white is the single accent.
+   Layout: top bar · color bar · stage (artboard, dock, history) beside the cards. Phone: everything stacks.
+   Single dark theme on purpose: it frames the art without competing with it. */
+:root {
+  color-scheme: dark;
+  --bg: #09090b;
+  --surface: #111113;
+  --surface-2: #18181b;
+  --surface-3: #232327;
+  --line: rgba(255, 255, 255, .07);
+  --line-2: rgba(255, 255, 255, .13);
+  --fg: #fafafa;
+  --muted: #8d8d96;
+  --dim: #5f5f68;
+  --ink: #09090b;
+  --focus: #7b93ff;
+  --font: "Geist", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r-lg: 16px; --r-md: 12px; --r-sm: 9px;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font); font-size: 14px; line-height: 1.45; letter-spacing: -0.005em;
+  overflow: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+.app {
+  height: 100%; display: grid;
+  grid-template-columns: minmax(0, 1fr) 344px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas: "top top" "color color" "stage panel";
+}
+
+/* ---------- buttons ---------- */
+button {
+  font: inherit; font-weight: 500; color: var(--fg); cursor: pointer; position: relative;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r-sm);
+  min-height: 38px; padding: 0 12px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+button:active { transform: scale(.98); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+button svg { width: 17px; height: 17px; flex: none; }
+.ghost, .chip, .tile, .shape, .fmt-card, .mini, .fmt-btn { background: var(--surface-2); border-color: var(--line); }
+@media (hover: hover) {
+  .ghost:hover, .chip:hover, .tile:hover, .shape:hover, .fmt-card:hover, .mini:hover, .fmt-btn:hover { background: var(--surface-3); border-color: var(--line-2); }
+  .icon:hover { background: var(--surface-2); }
+}
+.icon { width: 38px; padding: 0; color: var(--muted); }
+@media (hover: hover) { .icon:hover { color: var(--fg); } }
+.icon:disabled { opacity: .3; cursor: default; }
+.primary { background: var(--fg); color: var(--ink); font-weight: 600; }
+@media (hover: hover) { .primary:hover { background: #e4e4e7; } }
+.primary:disabled { opacity: .45; cursor: default; }
+[aria-pressed="true"].chip, [aria-pressed="true"].tile, [aria-pressed="true"].shape, [aria-pressed="true"].fmt-card {
+  background: var(--surface-3); border-color: rgba(255,255,255,.55); color: var(--fg);
+}
+
+/* ---------- top bar ---------- */
+.top {
+  grid-area: top; position: relative; z-index: 30;
+  display: flex; align-items: center; gap: 10px;
+  padding-block: 12px 8px;
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+}
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand svg { width: 22px; height: 22px; }
+.brand span { font-weight: 600; font-size: 15px; letter-spacing: -0.02em; }
+.fmt-btn { padding: 0 12px 0 10px; min-height: 40px; border-radius: 10px; margin-left: 10px; }
+.fmt-btn .ratio, .fmt-card .ratio { width: 20px; height: 20px; display: grid; place-items: center; flex: none; }
+.ratio i { display: block; border: 1.5px solid currentColor; border-radius: 2px; }
+.fmt-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.fmt-text b { font-weight: 500; font-size: 13px; }
+.fmt-text small { color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+.fmt-btn .chev { width: 14px; height: 14px; color: var(--muted); }
+.top .spacer { flex: 1; }
+.top-right { display: flex; align-items: center; gap: 2px; }
+.top-right .reset { min-height: 34px; padding: 0 11px; margin-right: 6px; font-size: 13px; color: var(--muted); }
+@media (hover: hover) { .top-right .reset:hover { color: var(--fg); } }
+.top-right .primary { margin-left: 8px; padding: 0 16px; min-height: 38px; border-radius: 10px; }
+
+.pop {
+  position: absolute; top: calc(100% + 2px); z-index: 40;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-lg);
+  padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: calc(100vh - 90px); overflow-y: auto;
+}
+.pop h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.pop .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+#fmtPop { left: max(18px, env(safe-area-inset-left, 0px)); width: min(560px, calc(100vw - 32px)); }
+#savePop, #morePop, #codePop { right: max(18px, env(safe-area-inset-right, 0px)); width: min(340px, calc(100vw - 32px)); }
+.fmt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.fmt-card { flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px; min-height: 0; border-radius: var(--r-md); text-align: left; }
+.fmt-card .ratio { width: 26px; height: 26px; color: var(--muted); }
+.fmt-card b { font-size: 12.5px; font-weight: 500; }
+.fmt-card small { display: block; color: var(--muted); font-family: var(--mono); font-size: 10.5px; font-weight: 400; }
+.fmt-card[aria-pressed="true"] .ratio { color: var(--fg); }
+.custom-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.custom-row input, .code { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); }
+.custom-row input { width: 90px; min-height: 38px; padding: 0 10px; font-family: var(--mono); }
+.code { width: 100%; padding: 10px; font-size: 12px; font-family: var(--mono); resize: none; word-break: break-all; }
+.menu-item { justify-content: flex-start; width: 100%; padding: 0 10px; color: var(--fg); }
+@media (hover: hover) { .menu-item:hover { background: var(--surface-2); } }
+.err { color: #f2a68a; font-size: 12.5px; }
+.kit-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.kit-box b { font-size: 13px; font-weight: 600; }
+.kit-box .ghost { flex: none; }
+
+/* ---------- color bar ---------- */
+.colorbar {
+  grid-area: color; display: flex; align-items: center; gap: 12px;
+  overflow-x: auto; scrollbar-width: none;
+  padding-block: 2px 12px;
+  padding-left: max(18px, env(safe-area-inset-left, 0px));
+  padding-right: max(18px, env(safe-area-inset-right, 0px));
+}
+.colorbar::-webkit-scrollbar { display: none; }
+.cname { display: flex; align-items: center; gap: 4px; flex: none; min-width: 112px; }
+.cname b { font-size: 13px; font-weight: 500; }
+.cdots { display: flex; gap: 8px; flex: none; align-items: center; padding: 4px 2px; }
+.cdot {
+  width: 28px; min-height: 28px; height: 28px; padding: 0; border-radius: 50%; flex: none;
+  position: relative; overflow: hidden; color: var(--fg); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+}
+.cdot svg { width: 14px; height: 14px; }
+.cdot[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--fg); }
+@media (hover: hover) { .cdot:hover { transform: scale(1.08); } }
+.cdot input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 2; }
+.cextra { display: flex; gap: 6px; align-items: center; flex: none; }
+.cextra input[type=range] { width: 140px; }
+.mini { width: 28px; min-height: 28px; height: 28px; padding: 0; border-radius: 50%; flex: none; }
+.csep { width: 1px; height: 22px; background: var(--line-2); flex: none; }
+.clabel { color: var(--muted); font-size: 12px; flex: none; }
+.checker {
+  background-color: #26262a;
+  background-image: linear-gradient(45deg, #34343a 25%, transparent 25%), linear-gradient(-45deg, #34343a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #34343a 75%), linear-gradient(-45deg, transparent 75%, #34343a 75%);
+  background-size: 12px 12px; background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+.chip { min-height: 34px; padding: 0 12px; border-radius: 999px; font-size: 13px; flex: none; }
+.chip svg { width: 15px; height: 15px; }
+
+/* ---------- stage ---------- */
+.stage {
+  grid-area: stage; min-width: 0; min-height: 0; position: relative;
+  margin: 0 0 14px max(14px, env(safe-area-inset-left, 0px));
+  border-radius: 20px; border: 1px solid var(--line); background-color: #0d0d0f;
+  background-image: radial-gradient(rgba(255,255,255,.045) 1px, transparent 1px); background-size: 20px 20px; background-position: center;
+  display: flex; flex-direction: column; gap: 12px; padding: 18px;
+}
+.wall-tools { display: flex; gap: 6px; justify-content: center; margin-bottom: -4px; }
+.wall-tools .chip { min-height: 30px; padding: 0 12px; font-size: 12.5px; }
+.canvas-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.frame { position: relative; border-radius: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 24px 60px rgba(0,0,0,.55); container-type: inline-size; }
+.frame.checker { background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+.frame canvas { display: block; width: 100%; height: 100%; border-radius: 4px; touch-action: none; cursor: default; }
+.frame canvas.over { cursor: grab; }
+.frame.dragging canvas { cursor: grabbing; }
+.overlay { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s; }
+.frame.dragging .overlay { opacity: 1; }
+.safe i { position: absolute; left: 0; right: 0; background: rgba(123, 147, 255, .12); }
+.safe i.t { top: 0; } .safe i.b { bottom: 0; } .safe i.r { top: 0; bottom: 0; left: auto; }
+.guides { width: 100%; height: 100%; overflow: visible; }
+.guides line { stroke: rgba(255,255,255,.18); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.guides #gSnap line { stroke: var(--focus); stroke-width: 1.5; }
+.sel { position: absolute; pointer-events: none; border-radius: 50%; transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,.9); box-shadow: 0 0 0 4px rgba(255,255,255,.08); }
+.selbar {
+  position: absolute; transform: translate(-50%, 10px); z-index: 5;
+  display: flex; gap: 2px; padding: 3px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+.selbar button { min-height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 7px; }
+@media (hover: hover) { .selbar button:hover { background: var(--surface-2); } }
+.lockprev { position: absolute; inset: 0; pointer-events: none; color: #fff; text-align: center; text-shadow: 0 1px 12px rgba(0,0,0,.3); }
+.lock-date { position: absolute; left: 0; right: 0; top: 7.5%; font-weight: 500; font-size: 4.6cqw; opacity: .9; }
+.lock-time { position: absolute; left: 0; right: 0; top: 10%; font-weight: 600; font-size: 25cqw; line-height: 1.05; letter-spacing: -0.03em; opacity: .95; }
+.lock-home { position: absolute; left: 50%; bottom: 1.4%; width: 34%; height: 1.4cqw; min-height: 3px; transform: translateX(-50%); border-radius: 999px; background: rgba(255,255,255,.85); }
+.frame:fullscreen { width: 100% !important; height: 100% !important; border-radius: 0; box-shadow: none; display: grid; place-items: center; }
+.frame:fullscreen canvas { width: 100%; height: 100%; object-fit: contain; border-radius: 0; }
+.frame:fullscreen .sel, .frame:fullscreen .selbar, .frame:fullscreen .overlay, .frame:fullscreen .lockprev { display: none !important; }
+.frame:-webkit-full-screen { width: 100% !important; height: 100% !important; border-radius: 0; }
+.frame:-webkit-full-screen canvas { width: 100%; height: 100%; object-fit: contain; }
+
+.dock {
+  align-self: center; display: flex; align-items: center; gap: 4px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.45);
+}
+.dock button { border-radius: 10px; min-height: 40px; padding: 0 14px; }
+.dock .shuffle { padding: 0 18px; }
+.dock .ghost { background: transparent; border-color: transparent; }
+@media (hover: hover) { .dock .ghost:hover { background: var(--surface-2); } }
+.dock .ghost[aria-pressed="true"] { background: var(--surface-3); color: var(--fg); }
+.kbd { color: var(--dim); font-family: var(--mono); font-size: 11px; padding: 0 10px 0 6px; display: none; }
+@media (hover: hover) and (pointer: fine) { .kbd { display: inline; } }
+
+.history { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tabs { display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; flex: none; }
+.tabs button { min-height: 26px; padding: 0 10px; font-size: 12px; border-radius: 7px; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--surface-3); color: var(--fg); }
+.strip { display: flex; gap: 6px; overflow-x: auto; min-width: 0; flex: 1; scrollbar-width: none; padding-block: 2px; }
+.strip::-webkit-scrollbar { display: none; }
+.thumb { flex: none; position: relative; padding: 0; min-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line-2); background: #000; }
+.thumb canvas { display: block; height: 46px; width: auto; }
+.thumb.current { border-color: var(--fg); }
+.thumb .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 5px; font-family: var(--mono); font-size: 9.5px; text-align: left; background: rgba(0,0,0,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thumb .x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.75); font-size: 12px; line-height: 18px; text-align: center; }
+.empty { color: var(--dim); font-size: 12.5px; padding: 0 6px; white-space: nowrap; }
+
+/* ---------- panel ---------- */
+.panel {
+  grid-area: panel; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  padding-block: 0 calc(18px + env(safe-area-inset-bottom, 0px));
+  padding-left: 12px; padding-right: max(14px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 10px;
+}
+.panel::-webkit-scrollbar { display: none; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.card > header { display: flex; align-items: center; gap: 6px; min-height: 26px; }
+.card h2 { margin: 0; flex: 1; font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; }
+.card h3 { margin: 0 0 -6px; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.pin { width: 28px; min-height: 28px; padding: 0; border-radius: 7px; color: var(--dim); flex: none; }
+.pin svg { width: 15px; height: 15px; }
+@media (hover: hover) { .pin:hover { color: var(--fg); background: var(--surface-2); } }
+.pin[aria-pressed="true"] { color: var(--ink); background: var(--fg); }
+.card.locked { border-color: rgba(255,255,255,.25); }
+.mini-btn { min-height: 28px; padding: 0 10px; font-size: 12px; border-radius: 7px; color: var(--muted); }
+@media (hover: hover) { .mini-btn:hover { color: var(--fg); background: var(--surface-2); } }
+
+.formula { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--r-md); background: var(--bg); border: 1px solid var(--line); }
+.eq { font-family: "STIX Two Text", Georgia, "Times New Roman", serif; font-style: italic; font-size: 21px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eq b { font-style: normal; font-family: var(--mono); font-weight: 500; font-size: 18px; font-variant-numeric: tabular-nums; }
+.eq-info { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.eq-info .mini-btn { font-family: var(--font); color: var(--fg); border-color: var(--line-2); }
+
+.shapes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.shape { padding: 0; min-height: 0; aspect-ratio: 1; border-radius: 10px; }
+.shape canvas { width: 76%; height: 76%; opacity: .9; transition: transform .3s ease; }
+@media (hover: hover) { .shape:hover canvas { transform: rotate(12deg); } }
+
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+#strokes { grid-template-columns: repeat(5, 1fr); }
+.tile { flex-direction: column; gap: 3px; min-height: 56px; padding: 6px 2px; border-radius: 10px; font-size: 11px; color: var(--muted); }
+.tile svg { width: 24px; height: 24px; color: var(--fg); }
+
+.ctl { display: flex; flex-direction: column; gap: 4px; }
+.ctl-top { display: flex; justify-content: space-between; align-items: baseline; }
+.ctl-top label { font-size: 12.5px; color: var(--muted); }
+.ctl-top output { font-family: var(--mono); font-size: 11.5px; color: var(--fg); font-variant-numeric: tabular-nums; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; touch-action: pan-y; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--fg) var(--p, 50%), var(--surface-3) var(--p, 50%)); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--fg) var(--p, 50%), var(--surface-3) var(--p, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--fg); border: 3px solid var(--bg); box-shadow: 0 0 0 1px rgba(255,255,255,.4); cursor: grab; }
+input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--fg); border: 3px solid var(--bg); box-shadow: 0 0 0 1px rgba(255,255,255,.4); cursor: grab; }
+input.hue::-webkit-slider-runnable-track { background: linear-gradient(90deg, hsl(0,75%,62%), hsl(60,75%,62%), hsl(120,75%,62%), hsl(180,75%,62%), hsl(240,75%,62%), hsl(300,75%,62%), hsl(360,75%,62%)); }
+input.hue::-moz-range-track { background: linear-gradient(90deg, hsl(0,75%,62%), hsl(60,75%,62%), hsl(120,75%,62%), hsl(180,75%,62%), hsl(240,75%,62%), hsl(300,75%,62%), hsl(360,75%,62%)); }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; }
+.row > span { font-size: 12.5px; color: var(--muted); }
+.seg { display: flex; gap: 2px; padding: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; }
+.seg button { min-height: 28px; min-width: 34px; padding: 0 9px; border-radius: 7px; font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+.seg button[aria-pressed="true"] { background: var(--surface-3); color: var(--fg); }
+.seg.wide { display: grid; grid-template-columns: repeat(7, 1fr); }
+.seg.wide button { min-width: 0; padding: 0 2px; }
+.hint { color: var(--dim); font-size: 12px; margin-top: -4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.switch { width: 36px; min-height: 20px; height: 20px; padding: 0; border-radius: 999px; background: var(--surface-3); justify-content: flex-start; flex: none; }
+.switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .18s ease, background .18s; }
+.switch[aria-checked="true"] { background: var(--fg); }
+.switch[aria-checked="true"]::after { transform: translateX(16px); background: var(--ink); }
+.note { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- variations ---------- */
+.modal {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: grid; place-items: center;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.modal-card { width: min(800px, 100%); max-height: 100%; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.modal-head { display: flex; align-items: center; gap: 8px; }
+.modal-head .grow { flex: 1; }
+.modal-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.modal-head .sub { color: var(--muted); font-size: 12.5px; }
+.var-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.var { position: relative; padding: 0; min-height: 0; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #000; border: 1px solid var(--line-2); }
+.var canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+@media (hover: hover) { .var:hover { border-color: var(--fg); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.var { animation: fade-in .3s ease both; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%) translateY(6px);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--fg); color: var(--ink); padding: 9px 14px; border-radius: 10px;
+  font-weight: 500; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 60;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto auto minmax(0, 1fr); grid-template-areas: "top" "color" "stage" "panel"; }
+  .top { flex-wrap: wrap; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+  .brand span { display: none; }
+  .top-right .reset span { display: none; }
+  .top-right .reset { width: 34px; padding: 0; margin-right: 2px; }
+  .fmt-btn { margin-left: 0; }
+  .colorbar { padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); padding-block: 0 10px; }
+  .cname { min-width: 0; }
+  .stage { margin: 0 max(10px, env(safe-area-inset-right, 0px)) 10px max(10px, env(safe-area-inset-left, 0px)); padding: 12px; gap: 10px; border-radius: 16px; }
+  .canvas-wrap { flex: none; height: 32vh; }
+  .dock { max-width: 100%; }
+  .dock .ghost { font-size: 0; gap: 0; width: 42px; padding: 0; }
+  .dock .ghost span { display: none; }
+  .thumb canvas { height: 36px; }
+  .fmt-grid { grid-template-columns: repeat(2, 1fr); }
+  .panel { padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+  .var-grid { gap: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" fill="none" stroke="#fafafa" stroke-width="1.8" aria-hidden="true"><path d="M16 16c0-6 3-10 6-10s4 4 0 7-6 3-6 3 3-1 7 2 3 7 0 7-7-3-7-9c0 6-3 10-6 10s-4-4 0-7 6-3 6-3-3 1-7-2-3-7 0-7 7 3 7 9z"/></svg>
+      <span>Rhodonea</span>
+    </div>
+    <button class="fmt-btn" id="fmtBtn" type="button" aria-expanded="false" aria-controls="fmtPop">
+      <span class="ratio" id="fmtRatio"><i></i></span>
+      <span class="fmt-text"><b id="fmtName"></b><small id="fmtSize"></small></span>
+      <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m4 6 4 4 4-4"/></svg>
+    </button>
+    <div class="spacer"></div>
+    <div class="top-right">
+      <button class="ghost reset" id="btnReset" type="button" title="Reset every setting to the start"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a6 6 0 1 0 2-4.5M4 4v3h3"/></svg><span>Start over</span></button>
+      <button class="icon" id="btnUndo" type="button" aria-label="Undo" title="Undo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5 3 9l4 4"/><path d="M3 9h9a5 5 0 0 1 0 10h-2"/></svg></button>
+      <button class="icon" id="btnRedo" type="button" aria-label="Redo" title="Redo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m13 5 4 4-4 4"/><path d="M17 9H8a5 5 0 0 0 0 10h2"/></svg></button>
+      <button class="icon" id="btnDisplay" type="button" aria-label="Show fullscreen" title="Fullscreen display: run it as a living wallpaper"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button>
+      <button class="icon" id="btnMore" type="button" aria-label="More" aria-expanded="false" aria-controls="morePop"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4.5" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15.5" cy="10" r="1.6"/></svg></button>
+      <button class="primary" id="btnSave" type="button" aria-expanded="false" aria-controls="savePop"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10m-4-4 4 4 4-4M4 16h12"/></svg>Save</button>
+    </div>
+
+    <div class="pop" id="fmtPop" hidden>
+      <div><h3>Canvas size</h3><div class="sub">Pick where it's going. The canvas reshapes and the flowers rearrange to fit.</div></div>
+      <div class="fmt-grid" id="fmtGrid"></div>
+      <div class="custom-row" id="customRow" hidden>
+        <input id="cw" type="number" min="200" max="8000" aria-label="Width in pixels"> ×
+        <input id="ch" type="number" min="200" max="8000" aria-label="Height in pixels"> px
+      </div>
+    </div>
+    <div class="pop" id="savePop" hidden>
+      <div><h3>Save image</h3><div class="sub" id="saveSub"></div></div>
+      <div class="row"><span>File</span><div class="seg" id="fileTypes"></div></div>
+      <div class="row" id="clearRow"><span>Transparent background</span><button class="switch" id="clearSwitch" type="button" role="switch" aria-checked="false" aria-label="Transparent background"></button></div>
+      <button class="primary" id="btnDoSave" type="button">Save PNG</button>
+      <div class="kit-box">
+        <div><b>Wallpaper kit</b><div class="sub" id="kitSub"></div></div>
+        <button class="ghost" id="btnKit" type="button">Save kit (.zip)</button>
+      </div>
+    </div>
+    <div class="pop" id="morePop" hidden>
+      <button class="menu-item" id="miCopy" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="6" y="6" width="10" height="10" rx="2"/><path d="M4 13V5a1 1 0 0 1 1-1h8"/></svg>Copy share code</button>
+      <button class="menu-item" id="miOpen" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h9m-3-4 4 4-4 4"/><path d="M16 4v12"/></svg>Open a share code</button>
+    </div>
+    <div class="pop" id="codePop" hidden>
+      <div><h3>Open a share code</h3><div class="sub">Paste a code someone sent you to open their design.</div></div>
+      <textarea class="code" id="pasteCode" rows="3" aria-label="Share code" placeholder="RS1z…"></textarea>
+      <div class="err" id="codeErr" hidden></div>
+      <button class="primary" id="btnOpenCode" type="button">Open</button>
+    </div>
+  </header>
+
+  <div class="colorbar" id="colorbar">
+    <div class="cname"><button class="pin" data-lock="color" type="button"></button><b id="cname">Colors</b></div>
+    <div class="cdots" id="cdots" role="group" aria-label="Flower colors"></div>
+    <div class="cextra" id="cextra"></div>
+    <span class="csep"></span>
+    <span class="clabel">Background</span>
+    <div class="cdots" id="bgs" role="group" aria-label="Background"></div>
+    <span class="csep"></span>
+    <button class="chip" id="blendChip" type="button" aria-pressed="false" title="Each line fades through the colors">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 11c3-6 9-6 12 0"/></svg>Blend</button>
+  </div>
+
+  <main class="stage">
+    <div class="wall-tools" id="wallTools" hidden>
+      <button class="chip" id="lockBtn" type="button" aria-pressed="false">Lock screen</button>
+      <button class="chip" id="clockBtn" type="button" aria-pressed="false">Clock space</button>
+    </div>
+    <div class="canvas-wrap" id="wrap">
+      <div class="frame" id="frame">
+        <canvas id="cv" aria-label="Your flower design. Drag a flower to move it."></canvas>
+        <div class="overlay safe" id="safe"><i class="t"></i><i class="b"></i><i class="r"></i></div>
+        <svg class="overlay guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="33.333" y1="0" x2="33.333" y2="100"/><line x1="66.667" y1="0" x2="66.667" y2="100"/>
+          <line x1="0" y1="33.333" x2="100" y2="33.333"/><line x1="0" y1="66.667" x2="100" y2="66.667"/>
+          <g id="gSnap"></g>
+        </svg>
+        <div class="lockprev" id="lockPrev" hidden aria-hidden="true">
+          <div class="lock-date" id="lockDate"></div>
+          <div class="lock-time" id="lockTime"></div>
+          <div class="lock-home"></div>
+        </div>
+        <div class="sel" id="sel" hidden></div>
+        <div class="selbar" id="selbar" hidden>
+          <button type="button" id="selReset">Reset</button>
+          <button type="button" id="selRemove">Remove</button>
+          <button type="button" id="selDone">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <button class="primary shuffle" id="btnShuffle" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="3.5"/><circle cx="7" cy="7" r="1.1" fill="currentColor"/><circle cx="13" cy="13" r="1.1" fill="currentColor"/><circle cx="10" cy="10" r="1.1" fill="currentColor"/></svg>Shuffle</button>
+      <button class="ghost" id="btnVariations" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="5.5" height="5.5" rx="1.5"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.5"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.5"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.5"/></svg>Variations</button>
+      <button class="ghost" id="btnPlay" type="button" aria-pressed="true" aria-label="Play motion"><svg viewBox="0 0 20 20" fill="currentColor" id="playIcon"></svg><span>Motion</span></button>
+      <span class="kbd">S shuffles · Space plays</span>
+    </div>
+
+    <div class="history">
+      <div class="tabs" role="group" aria-label="History">
+        <button type="button" id="tabRecent" aria-pressed="true">Recent</button>
+        <button type="button" id="tabSaved" aria-pressed="false">Saved</button>
+      </div>
+      <button class="icon" id="btnStar" type="button" aria-label="Save this look" title="Save this look"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m10 2.5 2.3 4.8 5.2.7-3.8 3.6.9 5.2L10 14.3l-4.6 2.5.9-5.2L2.5 8l5.2-.7z"/></svg></button>
+      <div class="strip" id="strip"></div>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <section class="card" data-group="flower">
+      <header><h2>Flower</h2><button class="pin" data-lock="flower" type="button"></button></header>
+      <div class="formula" id="formula" aria-live="polite">
+        <div class="eq" id="eq"></div>
+        <div class="eq-info"><span id="eqInfo"></span><button class="mini-btn" id="btnClose" type="button" hidden>Complete</button></div>
+      </div>
+      <div class="ctl" data-k="k" data-label="Petals · k" data-min="0.25" data-max="12" data-step="0.01"></div>
+      <div class="ctl" data-k="turns" data-label="Turns" data-min="0.5" data-max="12" data-step="0.05"></div>
+      <div class="ctl" data-k="offset" data-label="Inner loops" data-min="-1" data-max="1" data-step="0.01"></div>
+      <h3>Quick shapes</h3>
+      <div class="shapes" id="shapes" role="group" aria-label="Quick shapes"></div>
+      <h3>Line</h3>
+      <div class="tiles" id="strokes" role="group" aria-label="Line style"></div>
+      <div class="ctl" data-k="lineWidth" data-label="Thickness" data-min="0.5" data-max="6" data-step="0.25"></div>
+      <div class="ctl" data-k="glow" data-label="Glow" data-min="0" data-max="20" data-step="1"></div>
+      <div class="row"><span>Inner layers</span><div class="seg" id="echoes" role="group" aria-label="Inner layers"></div></div>
+      <div class="row"><span>Soft petals</span><button class="switch" id="fillSwitch" type="button" role="switch" aria-checked="true" aria-label="Soft petals"></button></div>
+    </section>
+
+    <section class="card" data-group="garden">
+      <header><h2>Garden</h2>
+        <button class="mini-btn" id="btnSpawn" type="button" title="Move the flowers to new spots">New spots</button>
+        <button class="pin" data-lock="garden" type="button"></button></header>
+      <div class="tiles" id="layouts" role="group" aria-label="Layout"></div>
+      <div class="ctl" data-k="count" data-label="How many" data-min="1" data-max="12" data-step="1"></div>
+      <div class="ctl" data-k="size" data-label="Size" data-min="20" data-max="100" data-step="1" data-unit="%"></div>
+      <div class="note" id="hiddenNote" hidden><span id="hiddenText"></span><button class="mini-btn" id="btnUnhide" type="button">Bring back</button></div>
+    </section>
+
+    <section class="card" data-group="effects">
+      <header><h2>Kaleidoscope</h2><button class="pin" data-lock="effects" type="button"></button></header>
+      <div class="seg wide" id="kslices" role="group" aria-label="Kaleidoscope slices"></div>
+      <div class="hint" id="kHint">Off shows your garden as it is. 2 is a mirror.</div>
+      <div id="kOpts" style="display:flex;flex-direction:column;gap:14px">
+        <div class="ctl" data-k="kTurn" data-label="Turn" data-min="0" data-max="360" data-step="1" data-unit="°"></div>
+        <div class="ctl" data-k="kZoom" data-label="Zoom" data-min="50" data-max="200" data-step="1" data-unit="%"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <header><h2>Motion</h2></header>
+      <div class="chips" id="motions" role="group" aria-label="Motion"></div>
+      <div class="ctl" data-k="mSpeed" data-label="Speed" data-min="0.25" data-max="3" data-step="0.25" data-unit="×"></div>
+      <div class="hint" id="motionHint"></div>
+    </section>
+  </aside>
+</div>
+
+<div class="modal" id="varModal" hidden role="dialog" aria-modal="true" aria-labelledby="varTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="grow"><h3 id="varTitle">Pick a favorite</h3><div class="sub">Nine takes on your garden. Pinned parts stay as they are.</div></div>
+      <button class="ghost" id="varShuffle" type="button">More</button>
+      <button class="ghost" id="varClose" type="button">Close</button>
+    </div>
+    <div class="var-grid" id="varGrid"></div>
+  </div>
+</div>
+<form class="pop" id="namePop" hidden style="position:fixed;width:min(280px,calc(100vw - 32px))">
+  <label for="nameInput" style="font-weight:600">Name this look</label>
+  <input id="nameInput" maxlength="40" autocomplete="off" class="code" style="font-family:inherit;font-size:14px;min-height:42px">
+  <div style="display:flex;gap:6px;justify-content:flex-end"><button class="ghost" type="button" id="nameCancel">Cancel</button><button class="primary" type="submit">Save</button></div>
+</form>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="imgFile" accept="image/*" hidden>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const STORE = 'rhodonea-studio-v3';
+const clone = o => JSON.parse(JSON.stringify(o));
+
+// ---------- data ----------
+const FORMATS = [
+  { id: 'artboard', p: 'Studio', n: 'Square', w: 1920, h: 1920 },
+  { id: 'ig-square', p: 'Instagram', n: 'Post', w: 1080, h: 1080 },
+  { id: 'ig-portrait', p: 'Instagram', n: 'Portrait', w: 1080, h: 1350 },
+  { id: 'ig-story', p: 'Instagram', n: 'Story', w: 1080, h: 1920, safe: { t: 0.13, b: 0.18 } },
+  { id: 'tiktok', p: 'TikTok', n: 'Cover', w: 1080, h: 1920, safe: { t: 0.10, b: 0.22, r: 0.14 } },
+  { id: 'x', p: 'X', n: 'Post', w: 1600, h: 900 },
+  { id: 'linkedin', p: 'LinkedIn', n: 'Post', w: 1200, h: 627 },
+  { id: 'youtube', p: 'YouTube', n: 'Thumbnail', w: 1280, h: 720 },
+  { id: 'pinterest', p: 'Pinterest', n: 'Pin', w: 1000, h: 1500 },
+  { id: 'dribbble', p: 'Dribbble', n: 'Shot', w: 1600, h: 1200 },
+  { id: 'behance', p: 'Behance', n: 'Cover', w: 808, h: 632 },
+  { id: 'phone', p: 'Wallpaper', n: 'iPhone Pro Max', w: 1290, h: 2796, wall: true },
+  { id: 'iphone', p: 'Wallpaper', n: 'iPhone', w: 1179, h: 2556, wall: true },
+  { id: 'android', p: 'Wallpaper', n: 'Android', w: 1080, h: 2400, wall: true },
+  { id: 'ipad', p: 'Wallpaper', n: 'iPad', w: 2048, h: 2732, wall: true },
+  { id: 'desktop', p: 'Wallpaper', n: 'Desktop 4K', w: 3840, h: 2160 },
+  { id: 'macbook', p: 'Wallpaper', n: 'MacBook', w: 2880, h: 1864 },
+  { id: 'a4', p: 'Print', n: 'A4', w: 2480, h: 3508 },
+  { id: 'custom', p: 'Custom', n: 'Your size', w: 0, h: 0 },
+];
+const FILE_TYPES = [['png', 'PNG'], ['jpg', 'JPG'], ['svg', 'SVG'], ['pdf', 'PDF'], ['video', 'Video']];
+const PALETTES = [
+  { n: 'Holo', c: ['#ff9be8', '#c8a8ff', '#8fe9ff', '#fff3a8'] },
+  { n: 'Bubblegum', c: ['#ff6ad5', '#c774e8', '#ad8cff', '#94d0ff'] },
+  { n: 'Chrome', c: ['#ffffff', '#c9d1dc', '#8e99aa', '#e9edf3'] },
+  { n: 'Cyber', c: ['#d4ff3a', '#00f0ff', '#ff3ad4'] },
+  { n: 'Sorbet', c: ['#ffb3c7', '#ffd59e', '#b8f2d0', '#b9c8ff'] },
+  { n: 'Rosé', c: ['#f7a1c4', '#e85d8f', '#9b2f6b', '#ffd3e2'] },
+  { n: 'Lagoon', c: ['#00b4d8', '#48cae4', '#90e0ef', '#0077b6'] },
+  { n: 'Aurora', c: ['#7cff6b', '#00e0c6', '#7a5cff', '#ff5ce1'] },
+  { n: 'Ember', c: ['#ff6b35', '#f7c548', '#e63946', '#ffb4a2'] },
+  { n: 'Mono', c: ['#ffffff', '#c8c8c8', '#8a8a8a'] },
+];
+const BGS = [['#000000', 'Black'], ['#0b1020', 'Night'], ['#f3efe6', 'Paper']];
+// Gradient skies, drawn corner to corner.
+const BG_GRADS = [
+  { n: 'Midnight', c: ['#0d0826', '#24104a', '#0a2140'] },
+  { n: 'Vapor', c: ['#2b0a4f', '#5b2a86', '#1f6e9e'] },
+  { n: 'Holo', c: ['#f2dcff', '#cdf3ff', '#ffe0f5'] },
+  { n: 'Chrome', c: ['#eef1f5', '#9aa4b4', '#e3e7ee'] },
+];
+const bgCss = P => P.bgMode === 'gradient' ? `linear-gradient(135deg, ${(BG_GRADS[P.bgGrad] || BG_GRADS[0]).c.join(', ')})` : P.bgMode === 'transparent' ? '#000' : P.bgColor;
+const SHAPES = [[3, 1], [4, 1], [5, 1], [6, 1], [8, 1], [5, 2], [7, 2], [4, 3], [5, 3], [7, 3], [8, 5], [7, 4]];
+const LAYOUTS = [
+  ['center', 'Bouquet', '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="4"/>'],
+  ['ring', 'Wreath', '<circle cx="12" cy="4.5" r="2.4"/><circle cx="19" cy="9.5" r="2.4"/><circle cx="16.5" cy="18" r="2.4"/><circle cx="7.5" cy="18" r="2.4"/><circle cx="5" cy="9.5" r="2.4"/>'],
+  ['grid', 'Rows', '<circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/>'],
+  ['scatter', 'Wild', '<circle cx="7" cy="8" r="3.4"/><circle cx="17" cy="6" r="2"/><circle cx="15" cy="16" r="4"/><circle cx="5.5" cy="18" r="1.8"/>'],
+];
+const STROKES = [
+  ['solid', 'Solid', '<path d="M3 15c4-8 14-8 18 0"/>'],
+  ['dashed', 'Dashed', '<path d="M3 15c4-8 14-8 18 0" stroke-dasharray="3.5 3"/>'],
+  ['dotted', 'Dotted', '<path d="M3 15c4-8 14-8 18 0" stroke-dasharray="0.1 3.6"/>'],
+  ['gloss', 'Gloss', '<path d="M3 15c4-8 14-8 18 0" stroke-width="4" opacity=".55"/><path d="M4.5 13.6c3.6-6.4 11.4-6.4 15 0" stroke-width="1.1"/>'],
+];
+const FIXED = { echoScale: 0.8, sat: 72, light: 66, fill: 0.16 };
+
+const DEFAULTS = {
+  format: 'artboard', cw: 2000, ch: 1200,
+  layout: 'ring', seed: 20261115,
+  n: 5, d: 2, k: 2.5, turns: 2, offset: 0,
+  count: 6, size: 100, spread: 60, variety: 0, layers: 1, twist: 12,
+  edits: {},
+  symmetry: 'none', kSeg: 3, kTurn: 0, kZoom: 100, crop: 'none',
+  mSway: true, mFlow: false, mSpin: false, mPulse: false, mMorph: false, mSpeed: 1,
+  strokeStyle: 'solid', lineWidth: 1.75, glow: 4, softFill: true, center: false, sparkles: false,
+  colorMode: 'palette', hue: 330, hueSpread: 110, palette: PALETTES[5].c.slice(), colorApply: 'rose',
+  bgMode: 'color', bgColor: '#000000', bgGrad: 0,
+  spin: 15, drawOn: false,
+  clockSpace: false,
+};
+
+// Older designs stored the shape as a fraction n/d; now it's k (any real number) plus how many turns to draw.
+// A reduced n/d closes after d turns (d/2 when n·d is odd).
+function upgrade(P) {
+  if (P && P.strokeStyle === 'tapered') P.strokeStyle = 'solid';
+  if (P) { P.center = false; P.sparkles = false; }
+  if (P && P.k == null && (P.n || P.d)) {
+    let n = P.n || 5, d = P.d || 2, a = n, b = d; while (b) [a, b] = [b, a % b];
+    n /= a; d /= a; P.k = n / d; P.turns = (n * d) % 2 ? d / 2 : d;
+  }
+  return P;
+}
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+let S = clone(DEFAULTS);
+let locks = {}, starred = [], recent = [];
+let prefs = { fileType: 'png', clear: false, playing: !reduceMotion };
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+  if (saved) {
+    if (saved.S) S = { ...S, ...upgrade(saved.S) };
+    if (saved.S && saved.v !== 4) {
+      const keep = ['format', 'cw', 'ch', 'colorMode', 'hue', 'hueSpread', 'palette', 'colorApply', 'bgMode', 'bgColor'];
+      const prev = S; S = clone(DEFAULTS); keep.forEach(k => { if (k in prev) S[k] = prev[k]; });
+    }
+    const L = saved.locks || {};
+    if (L.flower || L.shape || L.style) locks.flower = true;
+    if (L.garden || L.arrange || L.composition) locks.garden = true;
+    if (L.color) locks.color = true;
+    if (L.effects) locks.effects = true;
+    starred = (saved.starred || []).map((p, i) => p && p.state ? p : { name: `Look ${i + 1}`, state: p });
+    prefs = { ...prefs, ...(saved.prefs || {}) };
+    if ('alive' in prefs) { prefs.playing = prefs.alive; delete prefs.alive; }
+    if (!FILE_TYPES.some(t => t[0] === prefs.fileType)) prefs.fileType = 'png';
+    S.crop = 'none'; // frames were removed from the app
+  }
+} catch (e) {}
+let saveT;
+function persist() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify({ v: 4, S, locks, starred, prefs })); } catch (e) {} }, 250);
+}
+const fmtOf = P => FORMATS.find(f => f.id === P.format) || FORMATS[0];
+const dimsOf = P => { const f = fmtOf(P); return f.id === 'custom' ? [P.cw, P.ch] : [f.w, f.h]; };
+const rand = (a, b) => a + Math.random() * (b - a);
+const randi = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+// ---------- color ----------
+const hexRgb = h => { const v = parseInt(h.slice(1), 16); return [v >> 16 & 255, v >> 8 & 255, v & 255]; };
+const rgbHex = (r, g, b) => '#' + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('');
+function hslHex(h, s, l) {
+  s /= 100; l /= 100;
+  const f = n => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return rgbHex(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+// Colors are read off a loop around the palette, so a moving phase (Color flow) cycles them smoothly.
+// At phase 0 each flower gets exactly its palette color.
+function palCyc(c, u) {
+  u = ((u % 1) + 1) % 1;
+  const L = c.length; if (L === 1) return c[0];
+  const pos = u * L, i = Math.floor(pos) % L, j = (i + 1) % L, f = pos - Math.floor(pos);
+  if (f < 1e-6) return c[i];
+  const a = hexRgb(c[i]), b = hexRgb(c[j]);
+  return rgbHex(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f);
+}
+const specHue = (P, t, phase) => hslHex((((P.hue + phase * 360 + t * P.hueSpread) % 360) + 360) % 360, FIXED.sat, FIXED.light);
+function colorForStroke(P, idx, total, phase = 0) {
+  if (P.colorMode === 'palette') return palCyc(P.palette, (idx % P.palette.length) / P.palette.length + phase);
+  return specHue(P, total > 1 ? idx / (total - 1) : 0, phase);
+}
+// f runs 0→1 along a closed curve; both ends meet in the same color.
+function colorAlong(P, f, phase = 0) {
+  if (P.colorMode === 'palette') return palCyc(P.palette, f + phase);
+  return specHue(P, 1 - Math.abs(2 * f - 1), phase);
+}
+const lighten = (hex, k) => { const [r, g, b] = hexRgb(hex); return rgbHex(r + (255 - r) * k, g + (255 - g) * k, b + (255 - b) * k); };
+const darken = (hex, k) => { const [r, g, b] = hexRgb(hex); return rgbHex(r * (1 - k), g * (1 - k), b * (1 - k)); };
+
+// ---------- geometry ----------
+const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+const reduce = (n, d) => { const g = gcd(n, d); return [n / g, d / g]; };
+const period = (n, d) => { const [a, b] = reduce(n, d); return ((a * b) % 2 === 1 ? Math.PI : 2 * Math.PI) * b; };
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function traits(P, i) {
+  const r = mulberry32(P.seed + i * 7919);
+  return { sx: r(), sy: r(), sizeR: r(), varR: r(), vn: 1 + Math.floor(r() * 9), vd: 1 + Math.floor(r() * 7), rot: r() };
+}
+function buildRoses(P, W, H) {
+  const N = P.count, R0 = Math.min(W, H) / 2, base = P.size / 100, list = [], placed = [];
+  const cols = Math.max(1, Math.min(N, Math.round(Math.sqrt(N * W / H)))), rows = Math.ceil(N / cols);
+  for (let i = 0; i < N; i++) {
+    const t = traits(P, i);
+    let x = W / 2, y = H / 2, A;
+    if (P.layout === 'center') A = base * R0 * 0.96;
+    else if (P.layout === 'ring') {
+      const a = (i / N) * Math.PI * 2 - Math.PI / 2, s = (0.15 + 0.85 * P.spread / 100) * 0.72;
+      x = W / 2 + Math.cos(a) * (W / 2) * s; y = H / 2 + Math.sin(a) * (H / 2) * s;
+      A = base * R0 * (N === 1 ? 0.96 : 0.42);
+      if (N > 1) A = Math.min(A, R0 * s * Math.sin(Math.PI / N) * 0.96);
+    } else if (P.layout === 'grid') {
+      const gap = 0.6 + (P.spread / 100) * 0.4, cell = Math.min(W / cols, H / rows);
+      const c = i % cols, r = Math.floor(i / cols), rowItems = r === rows - 1 ? N - r * cols : cols;
+      x = W / 2 + ((c - (rowItems - 1) / 2) * cell) * gap;
+      y = H / 2 + ((r - (rows - 1) / 2) * cell) * gap;
+      A = base * cell * 0.48 * gap;
+    } else {
+      const m = 0.5 + (P.spread / 100) * 0.42;
+      A = base * R0 * (N === 1 ? 0.96 : 0.38) * (1 - t.sizeR * 0.5);
+      const cr = mulberry32(P.seed + i * 7919 + 4242);
+      let ux = t.sx, uy = t.sy, ok = false;
+      for (let round = 0; round < 7 && !ok; round++) {
+        for (let tries = 0; tries < 30 && !ok; tries++) {
+          if (round || tries) { ux = cr(); uy = cr(); }
+          x = W / 2 + (ux * 2 - 1) * (W / 2) * m; y = H / 2 + (uy * 2 - 1) * (H / 2) * m;
+          ok = placed.every(o => Math.hypot(o.x - x, o.y - y) >= o.A + A);
+        }
+        if (!ok) A *= 0.82;
+      }
+      placed.push({ x, y, A });
+    }
+    let k = P.k, T = P.turns * Math.PI * 2, rot = i * P.twist + (P.layout === 'scatter' ? t.rot * 360 : 0), hidden = false;
+    if (t.varR < P.variety / 100) { k = t.vn / t.vd; T = period(t.vn, t.vd); }
+    // Clock space (tall wallpapers): the whole garden shrinks a little and moves down, leaving the top for the lock-screen clock.
+    if (P.clockSpace && H > W * 1.2) { x = W / 2 + (x - W / 2) * 0.8; y = H * 0.6 + (y - H / 2) * 0.8; A *= 0.8; }
+    const e = P.edits && P.edits[i];
+    if (e) {
+      x += (e.dx || 0) * W; y += (e.dy || 0) * H; A *= e.scale ?? 1; rot += e.rot || 0;
+      if (e.n || e.d) { k = (e.n || 1) / (e.d || 1); T = period(e.n || 1, e.d || 1); }
+      hidden = !!e.hidden;
+    }
+    list.push({ i, x, y, A, k, T, rot, hidden });
+  }
+  return list;
+}
+// r(θ) = A · (cos(kθ) + c) / (1 + |c|), drawn for θ from 0 to T. k can be any real number.
+function rosePoints(P, k, T, A, rotDeg, cx, cy, detail) {
+  const steps = Math.min(24000, Math.max(16, Math.ceil(T / (Math.PI * 2) * 320 * Math.min(6, Math.max(1, k / 2)) * detail)));
+  const rot = rotDeg * Math.PI / 180, c = P.offset || 0, pts = new Float32Array((steps + 1) * 2);
+  for (let s = 0; s <= steps; s++) {
+    const th = (s / steps) * T, r = A * (Math.cos(k * th) + c) / (1 + Math.abs(c));
+    pts[s * 2] = cx + r * Math.cos(th + rot); pts[s * 2 + 1] = cy + r * Math.sin(th + rot);
+  }
+  return pts;
+}
+// anim(i) → { s: scale, rot: degrees } lets the preview bloom and sway; exports pass none.
+function scene(P, W, H, detail = 1, anim = null) {
+  const roses = buildRoses(P, W, H), total = roses.length * P.layers, out = [];
+  roses.forEach(r => {
+    if (r.hidden) return;
+    const a = anim ? anim(r.i) : { s: 1, rot: 0 };
+    if (a.s < 0.02) return;
+    for (let l = 0; l < P.layers; l++) {
+      const A = r.A * a.s * Math.pow(FIXED.echoScale, l);
+      const pts = rosePoints(P, r.k, r.T, A, r.rot + l * P.twist * 0.75 + a.rot, r.x, r.y, detail), e = pts.length - 2;
+      // Closed when the curve ends where it started; open curves (irrational-looking k) are left open.
+      const closed = Math.hypot(pts[e] - pts[0], pts[e + 1] - pts[1]) < Math.max(0.5, A * 0.01);
+      out.push({ idx: r.i * P.layers + l, total, cx: r.x, cy: r.y, A, outer: l === 0, closed, pts });
+    }
+  });
+  return out;
+}
+function runs(P, st, phase = 0) {
+  const p = st.pts, cnt = p.length / 2;
+  const taper = P.strokeStyle === 'tapered', grad = P.colorApply === 'curve';
+  const base = colorForStroke(P, st.idx, st.total, phase);
+  if (!taper && !grad) return [{ from: 0, to: cnt - 1, color: base, w: 1, close: st.closed }];
+  const SEG = taper ? Math.max(24, Math.min(140, Math.floor(cnt / 6))) : 40, out = [];
+  for (let s = 0; s < SEG; s++) {
+    const from = Math.floor(s / SEG * (cnt - 1)), to = Math.max(from + 1, Math.floor((s + 1) / SEG * (cnt - 1)));
+    const f = (s + 0.5) / SEG;
+    let w = 1;
+    if (taper) { const m = (from + to) >> 1; w = 0.12 + 1.2 * Math.min(1, Math.hypot(p[m * 2] - st.cx, p[m * 2 + 1] - st.cy) / st.A); }
+    out.push({ from, to: Math.min(to, cnt - 1), color: grad ? colorAlong(P, f, phase) : base, w, close: false });
+  }
+  return out;
+}
+function dashFor(P, lw) {
+  if (P.strokeStyle === 'dashed') return [lw * 7, lw * 5];
+  if (P.strokeStyle === 'dotted') return [0.01, lw * 3.2];
+  return [];
+}
+function symmetryPlan(P, W, H) {
+  const R = Math.hypot(W, H);
+  if (P.symmetry === 'mirror') return { clip: `M${-R} ${-R}H0V${R}H${-R}Z`, copies: [{ r: 0, sx: 1, sy: 1 }, { r: 0, sx: -1, sy: 1 }] };
+  if (P.symmetry === 'quad') return { clip: `M${-R} ${-R}H0V0H${-R}Z`, copies: [{ r: 0, sx: 1, sy: 1 }, { r: 0, sx: -1, sy: 1 }, { r: 0, sx: 1, sy: -1 }, { r: 0, sx: -1, sy: -1 }] };
+  if (P.symmetry === 'kaleido') {
+    const k = P.kSeg, w = Math.PI / k, a0 = -Math.PI / 2, e = 0.004;
+    const clip = `M0 0L${(R * Math.cos(a0 - e)).toFixed(1)} ${(R * Math.sin(a0 - e)).toFixed(1)}A${R} ${R} 0 0 1 ${(R * Math.cos(a0 + w + e)).toFixed(1)} ${(R * Math.sin(a0 + w + e)).toFixed(1)}Z`;
+    const copies = [];
+    for (let j = 0; j < 2 * k; j++) copies.push(j % 2 === 0 ? { r: j * w, sx: 1, sy: 1 } : { r: (j + 1) * w, sx: 1, sy: 1, reflect: a0 });
+    return { clip, copies };
+  }
+  return null;
+}
+const layers = new Map();
+function layer(name, W, H) {
+  const key = name + W + 'x' + H;
+  let c = layers.get(key);
+  if (!c) { if (layers.size > 10) layers.clear(); c = document.createElement('canvas'); c.width = W; c.height = H; layers.set(key, c); }
+  return c;
+}
+// Lines never mix: each flower first clears a thin band underneath its outline, so crossings stay clean.
+const knockWidth = (P, u, lw) => (P.strokeStyle === 'tapered' ? lw * 1.32 : P.strokeStyle === 'gloss' ? lw * 1.6 : lw) * 2 + 4 * u;
+
+// ---------- backgrounds ----------
+function fillBg(g, W, H, P) {
+  if (P.bgMode === 'gradient') {
+    const cs = (BG_GRADS[P.bgGrad] || BG_GRADS[0]).c, gr = g.createLinearGradient(0, 0, W, H);
+    cs.forEach((c, i) => gr.addColorStop(i / (cs.length - 1), c));
+    g.fillStyle = gr;
+  } else g.fillStyle = P.bgMode === 'transparent' ? '#000' : P.bgColor;
+  g.fillRect(0, 0, W, H);
+}
+function drawArt(g, W, H, P, detail, anim, phase = 0) {
+  const u = Math.min(W, H) / 1920, lw = Math.max(0.3, P.lineWidth * u), ko = knockWidth(P, u, lw), dash = dashFor(P, lw);
+  g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, W, H);
+  g.globalAlpha = 1; g.lineJoin = 'round'; g.lineCap = 'round';
+  scene(P, W, H, detail, anim).forEach(st => {
+    const p = st.pts, path = new Path2D(), base = colorForStroke(P, st.idx, st.total, phase);
+    path.moveTo(p[0], p[1]);
+    for (let j = 2; j < p.length; j += 2) path.lineTo(p[j], p[j + 1]);
+    if (st.closed) path.closePath();
+    g.globalCompositeOperation = 'destination-out'; g.shadowBlur = 0; g.setLineDash([]); g.lineWidth = ko; g.stroke(path);
+    g.globalCompositeOperation = 'source-over';
+    if (P.softFill) { g.globalAlpha = FIXED.fill; g.fillStyle = base; g.fill(path); g.globalAlpha = 1; }
+    g.shadowBlur = P.glow * u; g.setLineDash(dash);
+    runs(P, st, phase).forEach(run => {
+      g.beginPath(); g.moveTo(p[run.from * 2], p[run.from * 2 + 1]);
+      for (let j = run.from + 1; j <= run.to; j++) g.lineTo(p[j * 2], p[j * 2 + 1]);
+      if (run.close) g.closePath();
+      if (P.strokeStyle === 'gloss') {
+        // Glossy plastic tube: dark rim, colored body, white highlight.
+        g.lineWidth = lw * 1.6; g.strokeStyle = darken(run.color, 0.45); g.shadowColor = run.color; g.stroke();
+        g.shadowBlur = 0; g.lineWidth = lw; g.strokeStyle = run.color; g.stroke();
+        g.lineWidth = Math.max(0.4, lw * 0.32); g.strokeStyle = 'rgba(255,255,255,.85)'; g.stroke();
+        g.shadowBlur = P.glow * u;
+      } else { g.lineWidth = lw * run.w; g.strokeStyle = run.color; g.shadowColor = run.color; g.stroke(); }
+    });
+  });
+  g.setLineDash([]); g.shadowBlur = 0; g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+}
+// turn (degrees) and zoom (factor) are added on top of the kaleidoscope's own Turn and Zoom while animating.
+function drawScene(g, W, H, P, { clear = false, detail = 1, anim = null, phase = 0, turn = 0, zoom = 1 } = {}) {
+  const art = layer('art', W, H);
+  drawArt(art.getContext('2d'), W, H, P, detail, anim, phase);
+  let src = art;
+  const plan = symmetryPlan(P, W, H);
+  if (plan) {
+    const kt = ((P.kTurn || 0) + turn) * Math.PI / 180, kz = (P.kZoom || 100) / 100 * zoom;
+    const sym = layer('sym', W, H), sg = sym.getContext('2d'), clip = new Path2D(plan.clip);
+    sg.setTransform(1, 0, 0, 1, 0, 0); sg.clearRect(0, 0, W, H);
+    plan.copies.forEach(c => {
+      sg.save(); sg.translate(W / 2, H / 2); sg.rotate(c.r);
+      if (c.reflect != null) { sg.rotate(c.reflect); sg.scale(1, -1); sg.rotate(-c.reflect); }
+      sg.scale(c.sx, c.sy); sg.clip(clip); sg.rotate(kt); sg.scale(kz, kz); sg.drawImage(art, -W / 2, -H / 2); sg.restore();
+    });
+    src = sym;
+  }
+  g.save();
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.shadowBlur = 0;
+  g.clearRect(0, 0, W, H);
+  if (!clear) fillBg(g, W, H, P);
+  g.drawImage(src, 0, 0);
+  g.restore();
+}
+function buildSVG(P, W, H, clear) {
+  const u = Math.min(W, H) / 1920, lw = Math.max(0.3, P.lineWidth * u);
+  const dash = dashFor(P, lw), plan = symmetryPlan(P, W, H), cp = null;
+  const knock = clear || P.bgMode === 'transparent' ? null : P.bgMode === 'gradient' ? 'url(#bgg)' : P.bgColor, ko = knockWidth(P, u, lw).toFixed(2);
+  const seg = (p, from, to) => { let d = `M${p[from * 2].toFixed(1)} ${p[from * 2 + 1].toFixed(1)}`; for (let j = from + 1; j <= to; j++) d += `L${p[j * 2].toFixed(1)} ${p[j * 2 + 1].toFixed(1)}`; return d; };
+  const paths = [];
+  scene(P, W, H).forEach(st => {
+    const p = st.pts, whole = seg(p, 0, p.length / 2 - 1) + (st.closed ? 'Z' : ''), base = colorForStroke(P, st.idx, st.total);
+    if (knock) paths.push(`<path d="${whole}" stroke="${knock}" stroke-width="${ko}" stroke-dasharray="none" filter="none"/>`);
+    if (P.softFill) paths.push(`<path d="${whole}" fill="${base}" fill-opacity="${FIXED.fill}" stroke="none" filter="none"/>`);
+    runs(P, st).forEach(run => {
+      const d = seg(p, run.from, run.to) + (run.close ? 'Z' : '');
+      if (P.strokeStyle === 'gloss') {
+        paths.push(`<path d="${d}" stroke="${darken(run.color, 0.45)}" stroke-width="${(lw * 1.6).toFixed(2)}"/>`);
+        paths.push(`<path d="${d}" stroke="${run.color}" filter="none"/>`);
+        paths.push(`<path d="${d}" stroke="#ffffff" stroke-opacity=".85" stroke-width="${Math.max(0.4, lw * 0.32).toFixed(2)}" filter="none"/>`);
+      } else paths.push(`<path d="${d}" stroke="${run.color}"${run.w !== 1 ? ` stroke-width="${(lw * run.w).toFixed(2)}"` : ''}/>`);
+    });
+  });
+  const art = `<g id="art" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="${lw.toFixed(2)}"${dash.length ? ` stroke-dasharray="${dash.map(v => v.toFixed(2)).join(' ')}"` : ''}${P.glow > 0 ? ' filter="url(#glow)"' : ''}>\n${paths.join('\n')}\n</g>`;
+  const o = [`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`, '<defs>'];
+  if (P.glow > 0) o.push(`<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${(P.glow * u / 2).toFixed(2)}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`);
+  if (P.bgMode === 'gradient') {
+    const cs = (BG_GRADS[P.bgGrad] || BG_GRADS[0]).c;
+    o.push(`<linearGradient id="bgg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="${H}">${cs.map((c, i) => `<stop offset="${i / (cs.length - 1)}" stop-color="${c}"/>`).join('')}</linearGradient>`);
+  }
+  if (plan) o.push(`<clipPath id="sym"><path transform="translate(${W / 2} ${H / 2})" d="${plan.clip}"/></clipPath>`, art);
+  if (cp) o.push(`<clipPath id="crop"><path d="${cp}"/></clipPath>`);
+  o.push('</defs>');
+  if (!clear) o.push(`<rect width="100%" height="100%" fill="${P.bgMode === 'transparent' ? '#000000' : P.bgMode === 'gradient' ? 'url(#bgg)' : P.bgColor}"/>`);
+  o.push(`<g${cp ? ' clip-path="url(#crop)"' : ''}>`);
+  if (!plan) o.push(art);
+  else {
+    const deg = r => (r * 180 / Math.PI).toFixed(3);
+    plan.copies.forEach(c => {
+      let t = `translate(${W / 2} ${H / 2}) rotate(${deg(c.r)})`;
+      if (c.reflect != null) t += ` rotate(${deg(c.reflect)}) scale(1 -1) rotate(${deg(-c.reflect)})`;
+      t += ` scale(${c.sx} ${c.sy}) translate(${-W / 2} ${-H / 2})`;
+      const inner = `translate(${W / 2} ${H / 2}) rotate(${P.kTurn || 0}) scale(${(P.kZoom || 100) / 100}) translate(${-W / 2} ${-H / 2})`;
+      o.push(`<g transform="${t}"><g clip-path="url(#sym)"><use href="#art" xlink:href="#art" transform="${inner}"/></g></g>`);
+    });
+  }
+  o.push('</g>');
+  o.push('</svg>');
+  return o.join('\n');
+}
+
+// ---------- motion ----------
+// Every motion repeats exactly once per loop (8 s at speed 1×), so a recorded video loops without a seam.
+// Sway: each flower breathes and rocks. Color flow: colors travel around the palette.
+// Spin: the kaleidoscope turns (or, with the kaleidoscope off, each flower turns). Pulse: the kaleidoscope zooms in and out (or flowers swell).
+// Bloom (after Shuffle) and hover are preview-only touches on top.
+const BLOOM_MS = 900, STAGGER = 70, TAU = Math.PI * 2;
+let bloomStart = -1e9, hoverIdx = null, selected = null, clock = 0, recording = false;
+const hoverAmt = {};
+const easeOutBack = x => { const c1 = 1.6, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const blooming = now => now - bloomStart < BLOOM_MS + STAGGER * S.count;
+const loopSec = P => 8 / (P.mSpeed || 1);
+const anyMotion = P => !!(P.mSway || P.mFlow || P.mSpin || P.mPulse || P.mMorph);
+// Morph rocks k back and forth (±0.4), so petals split and merge as the math moves.
+const morphed = (P, m) => m.kShift ? { ...P, k: Math.max(0.25, P.k + m.kShift) } : P;
+function motionAt(P, t) {
+  const u = ((t / loopSec(P)) % 1 + 1) % 1, kal = P.symmetry !== 'none';
+  return {
+    phase: P.mFlow ? u : 0,
+    kShift: P.mMorph ? 0.4 * Math.sin(TAU * u) : 0,
+    turn: P.mSpin && kal ? u * 360 : 0,
+    zoom: P.mPulse && kal ? 1 + 0.18 * Math.sin(TAU * u) : 1,
+    flower: i => {
+      let s = 1, rot = 0;
+      if (P.mSway) { s *= 1 + Math.sin(TAU * (2 * u + i * 0.31)) * 0.022; rot += Math.sin(TAU * (u + i * 0.17)) * 3; }
+      if (P.mSpin && !kal) rot += u * 360;
+      if (P.mPulse && !kal) s *= 1 + 0.12 * Math.sin(TAU * (u + i * 0.13));
+      return { s, rot };
+    },
+  };
+}
+function previewMotion(now) {
+  const m = motionAt(S, clock), since = now - bloomStart, bl = blooming(now);
+  return { ...m, flower: i => {
+    let { s, rot } = m.flower(i);
+    if (bl) { const b = Math.max(0, Math.min(1, (since - i * STAGGER) / BLOOM_MS)); s *= b <= 0 ? 0 : easeOutBack(b); rot += (1 - b) * -60; }
+    s *= 1 + (hoverAmt[i] || 0) * 0.06;
+    return { s, rot };
+  } };
+}
+function bloom() { if (!reduceMotion) bloomStart = performance.now(); render(); }
+
+// ---------- preview ----------
+function sizePreview() {
+  const [W, H] = dimsOf(S), k = Math.min(1, 1200 / Math.max(W, H));
+  const pw = Math.round(W * k), ph = Math.round(H * k);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+  fitFrame();
+}
+function fitFrame() {
+  const wrap = $('wrap'), frame = $('frame'), [W, H] = dimsOf(S), aw = wrap.clientWidth, ah = wrap.clientHeight;
+  if (!aw || !ah) return;
+  const r = W / H, fw = Math.min(aw, ah * r);
+  frame.style.width = Math.floor(fw) + 'px'; frame.style.height = Math.floor(fw / r) + 'px';
+}
+new ResizeObserver(fitFrame).observe($('wrap'));
+function renderNow(now = performance.now()) {
+  const m = previewMotion(now);
+  drawScene(ctx, cv.width, cv.height, morphed(S, m), { clear: S.bgMode === 'transparent', anim: m.flower, phase: m.phase, turn: m.turn, zoom: m.zoom });
+  paintSel();
+}
+// One loop: it keeps running while something moves (sway, bloom, hover easing) and stops after a single frame otherwise.
+let loopOn = false;
+function hoverSettled() {
+  for (let i = 0; i < S.count; i++) if (Math.abs((i === hoverIdx ? 1 : 0) - (hoverAmt[i] || 0)) > 0.003) return false;
+  return true;
+}
+let lastFrame = 0;
+const moving = () => prefs.playing && anyMotion(S);
+function frame(now) {
+  if (moving() && lastFrame) clock += Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+  for (let i = 0; i < S.count; i++) { const target = i === hoverIdx ? 1 : 0; hoverAmt[i] = (hoverAmt[i] || 0) + (target - (hoverAmt[i] || 0)) * 0.18; }
+  if (!recording) renderNow(now);
+  if (!document.hidden && (moving() || blooming(now) || !hoverSettled())) requestAnimationFrame(frame);
+  else { loopOn = false; lastFrame = 0; }
+}
+function render() { if (!loopOn) { loopOn = true; lastFrame = 0; requestAnimationFrame(frame); } }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+// ---------- popovers ----------
+const pops = { fmtPop: 'fmtBtn', savePop: 'btnSave', morePop: 'btnMore', codePop: 'btnMore' };
+function openPop(id) {
+  Object.keys(pops).forEach(p => { $(p).hidden = p !== id; });
+  new Set(Object.values(pops)).forEach(btn => $(btn).setAttribute('aria-expanded', String(pops[id] === btn)));
+  if (id === 'fmtPop') paintFormats();
+  if (id === 'savePop') paintSave();
+}
+function closePops() { Object.keys(pops).forEach(p => { $(p).hidden = true; }); new Set(Object.values(pops)).forEach(b => $(b).setAttribute('aria-expanded', 'false')); $('namePop').hidden = true; }
+const toggler = (btn, id) => $(btn).addEventListener('click', e => { e.stopPropagation(); $(id).hidden ? openPop(id) : closePops(); });
+toggler('fmtBtn', 'fmtPop'); toggler('btnSave', 'savePop'); toggler('btnMore', 'morePop');
+document.addEventListener('click', e => {
+  if (e.target.closest('.pop') || e.target.closest('#fmtBtn, #btnSave, #btnMore, #btnStar')) return;
+  closePops();
+});
+
+const ratioIcon = (w, h, max) => { const s = max / Math.max(w || 16, h || 10); return `<i style="width:${Math.max(7, (w || 16) * s)}px;height:${Math.max(7, (h || 10) * s)}px"></i>`; };
+function paintFormats() {
+  const g = $('fmtGrid'); g.innerHTML = '';
+  FORMATS.forEach(f => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'fmt-card';
+    b.setAttribute('aria-pressed', String(f.id === S.format));
+    b.innerHTML = `<span class="ratio">${ratioIcon(f.w, f.h, 24)}</span><span><b>${f.p} ${f.n}</b><small>${f.w ? f.w + ' × ' + f.h : 'Set width and height'}</small></span>`;
+    b.addEventListener('click', () => {
+      S.format = f.id; sizePreview(); paintChrome(); bloom(); commit(); paintFormats();
+      if (f.id !== 'custom') closePops();
+    });
+    g.appendChild(b);
+  });
+  $('customRow').hidden = S.format !== 'custom';
+  $('cw').value = S.cw; $('ch').value = S.ch;
+}
+['cw', 'ch'].forEach(k => $(k).addEventListener('change', () => {
+  S[k] = Math.max(200, Math.min(8000, Math.round(+$(k).value || DEFAULTS[k])));
+  sizePreview(); paintChrome(); render(); commit();
+}));
+function paintChrome() {
+  const f = fmtOf(S), [W, H] = dimsOf(S);
+  $('fmtName').textContent = `${f.p} ${f.n}`;
+  $('fmtSize').textContent = `${W} × ${H}`;
+  $('fmtRatio').innerHTML = ratioIcon(W, H, 18);
+  const sf = $('safe');
+  ['t', 'b', 'r'].forEach(k => { const el = sf.querySelector('.' + k); const v = f.safe && f.safe[k]; el.hidden = !v; if (v) el.style[k === 'r' ? 'width' : 'height'] = (v * 100) + '%'; });
+  $('frame').classList.toggle('checker', S.bgMode === 'transparent');
+  paintWall();
+}
+
+// ---------- wallpapers ----------
+// Lock-screen preview: a clock and date over the canvas (never exported) to check the composition.
+// Clock space: shrinks the garden a little and moves it down so the clock has room (this is part of the design).
+function paintWall() {
+  const f = fmtOf(S), tall = (f.wall || S.format === 'custom') && dimsOf(S)[1] > dimsOf(S)[0] * 1.2;
+  $('wallTools').hidden = !tall;
+  $('lockBtn').setAttribute('aria-pressed', String(!!prefs.lockPreview));
+  $('clockBtn').setAttribute('aria-pressed', String(!!S.clockSpace));
+  $('lockPrev').hidden = !(tall && prefs.lockPreview);
+  if (!$('lockPrev').hidden) {
+    const now = new Date();
+    $('lockTime').textContent = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/i, '');
+    $('lockDate').textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+}
+setInterval(() => { if (!document.hidden && prefs.lockPreview) paintWall(); }, 20000);
+$('lockBtn').addEventListener('click', () => { prefs.lockPreview = !prefs.lockPreview; persist(); paintWall(); });
+$('clockBtn').addEventListener('click', () => { S.clockSpace = !S.clockSpace; select(null); paintWall(); bloom(); commit(); });
+
+// Fullscreen display: the canvas fills the screen and keeps moving, like a living wallpaper or screensaver.
+let wakeLock = null;
+$('btnDisplay').addEventListener('click', async () => {
+  const el = $('frame'), req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) { toast('Fullscreen isn\'t available on this device. Save a video instead.'); return; }
+  try {
+    select(null);
+    el.style.background = bgCss(S);
+    await req.call(el);
+    if (!prefs.playing && anyMotion(S)) { prefs.playing = true; paintPlay(); render(); }
+    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) {}
+  } catch (e) { el.style.background = ''; toast('Fullscreen was blocked here. Save a video instead.'); }
+});
+const onFs = () => {
+  if (!(document.fullscreenElement || document.webkitFullscreenElement)) {
+    $('frame').style.background = ''; try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; fitFrame();
+  }
+};
+document.addEventListener('fullscreenchange', onFs);
+document.addEventListener('webkitfullscreenchange', onFs);
+
+// save
+function paintSave() {
+  const f = fmtOf(S), [W, H] = dimsOf(S);
+  $('saveSub').textContent = `${f.p} ${f.n} · ${W} × ${H} px`;
+  const ft = $('fileTypes'); ft.innerHTML = '';
+  FILE_TYPES.forEach(([id, label]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', String(prefs.fileType === id));
+    b.addEventListener('click', () => { prefs.fileType = id; persist(); paintSave(); });
+    ft.appendChild(b);
+  });
+  $('clearRow').hidden = !(prefs.fileType === 'png' || prefs.fileType === 'svg');
+  $('clearSwitch').setAttribute('aria-checked', String(!!prefs.clear));
+  $('kitSub').textContent = anyMotion(S) && videoMime()
+    ? `Still image + ${+loopSec(S).toFixed(1)} s loop video + how-to`
+    : 'Still image + how-to. Turn on a motion to add the loop video.';
+  if (prefs.fileType === 'video') {
+    const [vw, vh] = videoSize();
+    $('saveSub').textContent = anyMotion(S) ? `One seamless ${+loopSec(S).toFixed(1)} s loop · ${vw} × ${vh} px` : 'Turn on a motion first (Motion card)';
+    $('btnDoSave').textContent = 'Record video';
+    $('btnDoSave').disabled = !anyMotion(S) || !videoMime();
+    if (!videoMime()) $('saveSub').textContent = 'This browser can\'t record video. Try Chrome or Safari.';
+  } else {
+    $('btnDoSave').textContent = `Save ${prefs.fileType.toUpperCase()}`;
+    $('btnDoSave').disabled = false;
+  }
+}
+
+// ---------- video ----------
+// Renders one loop frame by frame (time comes from the frame number, not the clock), so the file loops cleanly
+// even when a frame takes longer to draw than 1/30 s.
+const videoMime = () => window.MediaRecorder && ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
+function videoSize() {
+  const [W, H] = dimsOf(S), k = Math.min(1, 1920 / Math.max(W, H));
+  return [Math.round(W * k / 2) * 2, Math.round(H * k / 2) * 2];
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function recordVideo(onProgress) {
+  const mime = videoMime(); if (!mime) throw new Error('video');
+  const [W, H] = videoSize(), P = clone(S), FPS = 30, N = Math.round(loopSec(P) * FPS);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const draw = f => { const m = motionAt(P, f / FPS); drawScene(g, W, H, morphed(P, m), { anim: m.flower, phase: m.phase, turn: m.turn, zoom: m.zoom }); };
+  draw(0);
+  const stream = c.captureStream(0), track = stream.getVideoTracks()[0], manual = typeof track.requestFrame === 'function';
+  const live = manual ? stream : c.captureStream(FPS);
+  const rec = new MediaRecorder(live, { mimeType: mime, videoBitsPerSecond: 10e6 });
+  const chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(r => { rec.onstop = r; });
+  rec.start(250);
+  for (let f = 0; f < N; f++) {
+    const t0 = performance.now();
+    draw(f);
+    if (manual) track.requestFrame();
+    onProgress(f / N);
+    await sleep(Math.max(0, 1000 / FPS - (performance.now() - t0)));
+  }
+  rec.stop(); await stopped;
+  live.getTracks().forEach(t => t.stop()); stream.getTracks().forEach(t => t.stop());
+  const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm', f = fmtOf(P);
+  return { name: `rhodonea-${f.id}-loop.${ext}`, blob: new Blob(chunks, { type: mime.split(';')[0] }) };
+}
+$('clearSwitch').addEventListener('click', () => { prefs.clear = !prefs.clear; persist(); paintSave(); });
+const scripts = {};
+function loadScript(src) {
+  return scripts[src] ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { delete scripts[src]; rej(new Error('load')); }; document.head.appendChild(s); });
+}
+const toBlob = (c, type, q) => new Promise(r => c.toBlob(r, type, q));
+async function makeFile(type) {
+  const P = clone(S), [W, H] = dimsOf(P), f = fmtOf(P);
+  const clear = (type === 'png' || type === 'svg') && (prefs.clear || P.bgMode === 'transparent');
+  const base = `rhodonea-${f.id}-${W}x${H}`;
+  if (type === 'svg') return { name: base + '.svg', blob: new Blob([buildSVG(P, W, H, clear)], { type: 'image/svg+xml' }) };
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  drawScene(c.getContext('2d'), W, H, P, { clear });
+  if (type === 'jpg') return { name: base + '.jpg', blob: await toBlob(c, 'image/jpeg', 0.95) };
+  if (type === 'pdf') {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const { jsPDF } = window.jspdf, url = c.toDataURL('image/png');
+    let doc;
+    if (f.id === 'a4') { doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }); doc.addImage(url, 'PNG', 0, 0, 210, 297); }
+    else { doc = new jsPDF({ orientation: W > H ? 'landscape' : 'portrait', unit: 'px', format: [W, H], hotfixes: ['px_scaling'] }); doc.addImage(url, 'PNG', 0, 0, W, H); }
+    return { name: base + '.pdf', blob: doc.output('blob') };
+  }
+  return { name: base + '.png', blob: await toBlob(c, 'image/png') };
+}
+$('btnDoSave').addEventListener('click', async () => {
+  const btn = $('btnDoSave'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = prefs.fileType === 'video' ? 'Recording…' : 'Saving…';
+  try {
+    let f;
+    if (prefs.fileType === 'video') {
+      recording = true;
+      f = await recordVideo(p => { btn.textContent = `Recording… ${Math.round(p * 100)}%`; });
+    } else f = await makeFile(prefs.fileType);
+    recording = false; render();
+    await saveFile(f.name, f.blob); closePops();
+  } catch (e) {
+    recording = false; render();
+    toast(e.message === 'video' ? 'This browser can\'t record video. Try Chrome or Safari.' : 'Could not make the file. Try again.');
+  }
+  btn.disabled = false; btn.textContent = label;
+});
+// Wallpaper kit: everything needed to set it on a phone or computer, in one .zip.
+function kitHowTo(f, W, H, still, video) {
+  return [
+    `Rhodonea wallpaper kit · ${f.p} ${f.n} · ${W} × ${H} px`, '',
+    'Inside', `- ${still}: the still wallpaper`, video ? `- ${video}: one seamless loop (${+loopSec(S).toFixed(1)} s), set it to repeat` : null, '',
+    'iPhone / iPad', '- Still: save the image to Photos, then Settings > Wallpaper > Add New Wallpaper > Photos.',
+    video ? '- Moving: iOS plays Live Photos as wallpaper. Turn the video into a Live Photo with a video-to-Live-Photo app, then pick it as your wallpaper.' : null, '',
+    'Android', '- Still: open the image in Photos and choose "Use as" > Wallpaper.',
+    video ? '- Moving: use a video wallpaper app and pick the video.' : null, '',
+    'Mac / PC', '- Still: set the image as your desktop picture.',
+    video ? '- Moving: apps that support video wallpapers can play the loop.' : null, '',
+    'Made with Rhodonea Studio',
+  ].filter(l => l !== null).join('\n');
+}
+$('btnKit').addEventListener('click', async () => {
+  const btn = $('btnKit'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Making…';
+  try {
+    const f = fmtOf(S), [W, H] = dimsOf(S), still = await makeFile('png');
+    let video = null;
+    if (anyMotion(S) && videoMime()) { recording = true; video = await recordVideo(p => { btn.textContent = `Recording… ${Math.round(p * 100)}%`; }); recording = false; render(); }
+    btn.textContent = 'Packing…';
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+    const zip = new window.JSZip();
+    zip.file(still.name, still.blob);
+    if (video) zip.file(video.name, video.blob);
+    zip.file('how-to-set-your-wallpaper.txt', kitHowTo(f, W, H, still.name, video && video.name));
+    await saveFile(`rhodonea-wallpaper-${f.id}.zip`, await zip.generateAsync({ type: 'blob' }));
+    closePops();
+  } catch (e) { recording = false; render(); toast('Could not make the kit. Check your connection and try again.'); }
+  btn.disabled = false; btn.textContent = label;
+});
+
+let downloads = null; const hostless = !window.claude;
+if (window.claude && window.claude.use) {
+  window.claude.use('downloads').then(d => { downloads = d; if (!d) { $('btnDoSave').disabled = true; $('btnDoSave').title = 'Saving files is not available in this view'; } }).catch(() => {});
+}
+async function saveFile(filename, blob) {
+  if (downloads) {
+    try { await downloads.save({ filename, data: blob }); toast('Saved'); }
+    catch (e) { if (e && e.code === 'declined') return; toast(e && e.code === 'rate_limited' ? 'A save prompt is already open' : 'Could not save the file here'); }
+  } else if (hostless) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast('Saved');
+  } else toast('Saving files is not available in this view');
+}
+
+// ---------- share codes (in the ⋯ menu) ----------
+const HEX = /^#[0-9a-f]{6}$/i;
+const ENUMS = {
+  format: FORMATS.map(f => f.id), layout: ['center', 'ring', 'grid', 'scatter'], symmetry: ['none', 'mirror', 'quad', 'kaleido'],
+  crop: ['none', 'circle', 'hexagon', 'arch'], strokeStyle: ['solid', 'dashed', 'dotted', 'tapered', 'gloss'], colorMode: ['spectrum', 'palette'],
+  colorApply: ['rose', 'curve'], bgMode: ['color', 'transparent', 'gradient'],
+};
+const LIMITS = { cw: [200, 8000], ch: [200, 8000], n: [1, 16], d: [1, 12], offset: [-1, 1], count: [1, 40], size: [5, 100], spread: [0, 100], variety: [0, 100], layers: [1, 12], twist: [0, 90], kSeg: [1, 16], kTurn: [0, 360], kZoom: [50, 200], mSpeed: [0.25, 3], k: [0.25, 16], turns: [0.5, 16], bgGrad: [0, BG_GRADS.length - 1], lineWidth: [0.25, 14], glow: [0, 80], hue: [0, 360], hueSpread: [0, 360], spin: [-90, 90] };
+const b64e = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const b64d = str => { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; const s = atob(str); return Uint8Array.from(s, c => c.charCodeAt(0)); };
+async function encodeCode(obj) {
+  let bytes = new TextEncoder().encode(JSON.stringify(obj)), flag = 'j';
+  if (window.CompressionStream) { try { bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()); flag = 'z'; } catch (e) {} }
+  return `RS1${flag}.${b64e(bytes)}`;
+}
+async function decodeCode(code) {
+  const m = code.replace(/\s+/g, '').match(/^RS1([jz])\.([A-Za-z0-9_-]+)$/);
+  if (!m) throw new Error('format');
+  let bytes = b64d(m[2]);
+  if (m[1] === 'z') {
+    if (!window.DecompressionStream) throw new Error('browser');
+    bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function sanitizeDesign(o) {
+  if (!o || typeof o !== 'object') throw new Error('shape');
+  if (o.k == null && (typeof o.n === 'number' || typeof o.d === 'number')) upgrade(o);
+  const P = clone(DEFAULTS);
+  for (const k in DEFAULTS) {
+    if (!(k in o)) continue;
+    const dv = DEFAULTS[k], v = o[k];
+    if (typeof dv === 'number' && typeof v === 'number' && isFinite(v)) P[k] = LIMITS[k] ? Math.max(LIMITS[k][0], Math.min(LIMITS[k][1], v)) : v;
+    else if (typeof dv === 'boolean') P[k] = !!v;
+    else if (typeof dv === 'string' && typeof v === 'string' && (ENUMS[k] ? ENUMS[k].includes(v) : HEX.test(v))) P[k] = v;
+  }
+  if (Array.isArray(o.palette)) { const p = o.palette.filter(c => typeof c === 'string' && HEX.test(c)).slice(0, 8); if (p.length) P.palette = p; }
+  if (o.edits && typeof o.edits === 'object') {
+    P.edits = {};
+    for (const k in o.edits) {
+      const e = o.edits[k];
+      if (!/^\d{1,2}$/.test(k) || !e || typeof e !== 'object') continue;
+      const c = {};
+      ['dx', 'dy', 'scale', 'rot', 'n', 'd'].forEach(f => { if (typeof e[f] === 'number' && isFinite(e[f])) c[f] = e[f]; });
+      if (e.hidden) c.hidden = true;
+      P.edits[k] = c;
+    }
+  }
+  return P;
+}
+const diff = P => { const o = {}; for (const k in P) if (JSON.stringify(P[k]) !== JSON.stringify(DEFAULTS[k])) o[k] = P[k]; return o; };
+$('miCopy').addEventListener('click', async () => {
+  const code = await encodeCode(diff(S));
+  closePops();
+  try { await navigator.clipboard.writeText(code); toast('Share code copied'); }
+  catch (e) { openPop('codePop'); $('pasteCode').value = code; $('pasteCode').select(); toast('Copying is blocked here. Copy the selected code yourself.'); }
+});
+$('miOpen').addEventListener('click', e => { e.stopPropagation(); openPop('codePop'); $('codeErr').hidden = true; $('pasteCode').value = ''; $('pasteCode').focus(); });
+// Start over: every setting back to the start (canvas size, flower, garden, colors, kaleidoscope, motion),
+// pins released and Recent cleared. Saved looks are kept, and Undo brings the previous design back.
+$('btnReset').addEventListener('click', () => {
+  S = clone(DEFAULTS); locks = {}; recent = []; customOpen = false; clock = 0;
+  prefs.playing = !reduceMotion;
+  select(null); closePops(); paintPins(); paintPlay();
+  sizePreview(); syncUI(); bloom(); commit(); paintStrip(); persist();
+  toast('Started over. Undo brings your design back.');
+});
+$('btnOpenCode').addEventListener('click', async () => {
+  const err = $('codeErr'); err.hidden = true;
+  try { restore(sanitizeDesign(await decodeCode($('pasteCode').value))); bloom(); commit(); pushRecent(); closePops(); toast('Opened the shared design'); }
+  catch (e) {
+    err.textContent = e.message === 'browser' ? 'This browser cannot read that code. Update it and try again.' : 'That doesn\'t look like a Rhodonea code. Check that you copied all of it.';
+    err.hidden = false;
+  }
+});
+
+// ---------- pins ----------
+const PIN_NAMES = { flower: 'Flower', garden: 'Garden', color: 'Colors', effects: 'Kaleidoscope' };
+const PIN = on => `<svg viewBox="0 0 16 16" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 2h4l-.6 4.2L12 8.5V10H4V8.5l2.6-2.3z"/><path d="M8 10v4" fill="none"/></svg>`;
+function paintPins() {
+  document.querySelectorAll('.pin').forEach(b => {
+    const k = b.dataset.lock, on = !!locks[k];
+    b.innerHTML = PIN(on); b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', `${on ? 'Unpin' : 'Pin'} ${PIN_NAMES[k]}`);
+    b.title = on ? 'Pinned: Shuffle leaves this alone' : 'Pin to keep this when you shuffle';
+    b.closest('.card')?.classList.toggle('locked', on);
+  });
+}
+document.querySelectorAll('.pin').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.lock; locks[k] = !locks[k]; paintPins(); persist();
+  toast(locks[k] ? `${PIN_NAMES[k]} pinned. Shuffle will keep it.` : `${PIN_NAMES[k]} unpinned`);
+}));
+
+// ---------- sliders ----------
+const sliders = {};
+function makeSlider(el, k, { label, min, max, step, unit = '', cls = '' }) {
+  el.innerHTML = (label ? `<div class="ctl-top"><label for="s-${k}">${label}</label><output for="s-${k}"></output></div>` : '') +
+    `<input type="range" id="s-${k}" min="${min}" max="${max}" step="${step}"${cls ? ` class="${cls}"` : ''}${label ? '' : ` aria-label="${k}"`}>`;
+  const r = el.querySelector('input'), out = el.querySelector('output');
+  const fmt = v => (Number.isInteger(+step) ? Math.round(v) : (+v).toFixed(2).replace(/0$/, '')) + unit;
+  const paint = () => { r.value = S[k]; if (out) out.textContent = fmt(S[k]); r.style.setProperty('--p', ((S[k] - r.min) / (r.max - r.min) * 100) + '%'); };
+  r.addEventListener('input', () => { S[k] = +r.value; paint(); if (k === 'count') { deselectIfGone(); paintHiddenNote(); } if (k === 'mSpeed') paintMotionUI(); if (k === 'k' || k === 'turns' || k === 'offset') paintShapes(); render(); });
+  r.addEventListener('change', commit);
+  sliders[k] = { el, r, paint };
+}
+document.querySelectorAll('.ctl[data-k]').forEach(el => makeSlider(el, el.dataset.k, { label: el.dataset.label, min: el.dataset.min, max: el.dataset.max, step: el.dataset.step, unit: el.dataset.unit || '' }));
+
+// ---------- flower card ----------
+SHAPES.forEach(([n, d]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'shape'; b.dataset.n = n; b.dataset.d = d;
+  b.setAttribute('aria-label', `Flower ${n}/${d}`);
+  const c = document.createElement('canvas'); c.width = c.height = 80;
+  const g = c.getContext('2d'), pts = rosePoints({ offset: 0 }, n / d, period(n, d), 34, -90, 40, 40, 0.5), path = new Path2D();
+  path.moveTo(pts[0], pts[1]); for (let j = 2; j < pts.length; j += 2) path.lineTo(pts[j], pts[j + 1]); path.closePath();
+  g.fillStyle = 'rgba(255,143,171,.16)'; g.fill(path);
+  g.strokeStyle = '#f3eef1'; g.lineWidth = 2.2; g.lineJoin = 'round'; g.stroke(path);
+  g.fillStyle = '#ffd3e2'; g.beginPath(); g.arc(40, 40, 3, 0, Math.PI * 2); g.fill();
+  b.appendChild(c);
+  b.addEventListener('click', () => { S.k = n / d; S.turns = period(n, d) / (Math.PI * 2); S.offset = 0; S.edits = Object.fromEntries(Object.entries(S.edits || {}).map(([k, e]) => [k, { ...e, n: undefined, d: undefined }])); syncUI(); bloom(); commit(); });
+  $('shapes').appendChild(b);
+});
+// ---------- the formula ----------
+// Shows the live equation and, when k sits on a fraction, what that fraction means: petal count and when the curve closes.
+function nearestFrac(k) {
+  for (let d = 1; d <= 12; d++) {
+    const n = Math.round(k * d);
+    if (n > 0 && Math.abs(n / d - k) < 0.0045) { let a = n, b = d; while (b) [a, b] = [b, a % b]; return [n / a, d / a]; }
+  }
+  return null;
+}
+const fmtNum = v => String(+(+v).toFixed(2));
+function paintFormula() {
+  const c = S.offset || 0, off = Math.abs(c) < 0.005 ? '' : ` ${c > 0 ? '+' : '−'} <b>${fmtNum(Math.abs(c))}</b>`;
+  $('eq').innerHTML = `r = cos(<b>${fmtNum(S.k)}</b>θ)${off}`;
+  const f = nearestFrac(S.k), btn = $('btnClose');
+  if (!f) { $('eqInfo').textContent = `open curve · ${fmtNum(S.turns)} turns`; btn.hidden = true; return; }
+  const [n, d] = f, petals = (n * d) % 2 ? n : 2 * n, closeAt = (n * d) % 2 ? d / 2 : d;
+  const ratio = S.turns / closeAt, closed = ratio >= 0.999 && Math.abs(ratio - Math.round(ratio)) < 0.01;
+  $('eqInfo').textContent = `${d === 1 ? n : n + '/' + d} · ${petals} petals · ${closed ? 'closed' : `closes at ${fmtNum(closeAt)} turns`}`;
+  btn.hidden = closed; btn.dataset.turns = closeAt * Math.max(1, Math.ceil(ratio - 0.001));
+}
+$('btnClose').addEventListener('click', () => { S.turns = +$('btnClose').dataset.turns; syncUI(); render(); commit(); });
+function paintShapes() {
+  document.querySelectorAll('.shape').forEach(b => {
+    const n = +b.dataset.n, d = +b.dataset.d;
+    b.setAttribute('aria-pressed', String(Math.abs(S.k - n / d) < 0.006 && Math.abs(S.turns - period(n, d) / (Math.PI * 2)) < 0.03 && Math.abs(S.offset) < 0.01));
+  });
+  paintFormula();
+}
+
+function tiles(container, items, key, after) {
+  items.forEach(([v, label, icon]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tile'; b.dataset.key = key; b.dataset.v = v;
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">${icon}</svg><span>${label}</span>`;
+    b.addEventListener('click', () => { S[key] = v; if (after) after(v); deselectIfGone(); syncUI(); if (key === 'layout') bloom(); else render(); commit(); });
+    container.appendChild(b);
+  });
+}
+tiles($('strokes'), STROKES, 'strokeStyle');
+tiles($('layouts'), LAYOUTS, 'layout', v => { if (v === 'center') { S.count = Math.min(S.count, 4); S.layers = Math.min(S.layers, 2); } S.edits = {}; });
+[1, 2, 3].forEach(v => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = v; b.dataset.key = 'layers'; b.dataset.v = v;
+  b.setAttribute('aria-label', `${v} layer${v > 1 ? 's' : ''}`);
+  b.addEventListener('click', () => { S.layers = v; syncUI(); render(); commit(); });
+  $('echoes').appendChild(b);
+});
+const switchFor = (id, key) => $(id).addEventListener('click', () => { S[key] = !S[key]; syncUI(); render(); commit(); });
+switchFor('fillSwitch', 'softFill');
+
+// ---------- kaleidoscope ----------
+// A mirror is a 2-slice kaleidoscope, so one control covers both: k reflected pairs give 2k slices.
+const SLICES = [[0, 'Off'], [1, '2'], [2, '4'], [3, '6'], [4, '8'], [6, '12'], [8, '16']];
+const currentSlices = () => S.symmetry === 'none' ? 0 : S.symmetry === 'mirror' ? 1 : S.symmetry === 'kaleido' ? S.kSeg : -1;
+SLICES.forEach(([k, label]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.dataset.slices = k;
+  b.title = k === 0 ? 'No kaleidoscope' : k === 1 ? 'Mirror (2 slices)' : `${2 * k} slices`;
+  b.setAttribute('aria-label', b.title);
+  b.addEventListener('click', () => {
+    if (k === 0) S.symmetry = 'none'; else { S.symmetry = 'kaleido'; S.kSeg = k; }
+    syncUI(); render(); commit();
+  });
+  $('kslices').appendChild(b);
+});
+
+// ---------- motion chips ----------
+const MOTIONS = [
+  ['mSway', 'Sway', '<path d="M12 21v-9"/><path d="M12 14c-4 0-6-2.5-6-6 4 0 6 2.5 6 6zM12 12c0-3.5 2-6 6-6 0 3.5-2 6-6 6z"/>'],
+  ['mFlow', 'Color flow', '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16"/><path d="M12 4a4 4 0 0 0 0 8 4 4 0 0 1 0 8"/>'],
+  ['mSpin', 'Spin', '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>'],
+  ['mPulse', 'Pulse', '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" opacity=".55"/><circle cx="12" cy="12" r="10.5" opacity=".25"/>'],
+  ['mMorph', 'Morph', '<path d="M3 12c2-6 4-6 6 0s4 6 6 0 4-6 6 0"/>'],
+];
+MOTIONS.forEach(([key, label, icon]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.motion = key;
+  b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>${label}`;
+  b.addEventListener('click', () => {
+    S[key] = !S[key];
+    if (S[key] && !prefs.playing) { prefs.playing = true; paintPlay(); persist(); }
+    syncUI(); render(); commit();
+  });
+  $('motions').appendChild(b);
+});
+function paintMotionUI() {
+  const kal = S.symmetry !== 'none';
+  document.querySelectorAll('[data-slices]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.slices === currentSlices())));
+  $('kOpts').style.display = kal ? 'flex' : 'none';
+  $('kHint').hidden = kal;
+  document.querySelectorAll('[data-motion]').forEach(b => b.setAttribute('aria-pressed', String(!!S[b.dataset.motion])));
+  document.querySelector('[data-motion="mSpin"]').title = kal ? 'The kaleidoscope turns' : 'Each flower turns';
+  document.querySelector('[data-motion="mPulse"]').title = kal ? 'The kaleidoscope zooms in and out' : 'Flowers swell and settle';
+  $('motionHint').textContent = anyMotion(S)
+    ? `One seamless loop is ${+loopSec(S).toFixed(1)} s. Save it as a video from Save.`
+    : 'Pick a motion to bring the garden to life.';
+}
+
+// ---------- color bar ----------
+const conic = cs => `conic-gradient(${cs.map((c, i) => `${c} ${i / cs.length * 100}% ${(i + 1) / cs.length * 100}%`).join(',')})`;
+const RAINBOW = 'conic-gradient(hsl(0,75%,66%),hsl(60,75%,66%),hsl(120,75%,66%),hsl(180,75%,66%),hsl(240,75%,66%),hsl(300,75%,66%),hsl(360,75%,66%))';
+const presetName = () => (PALETTES.find(p => JSON.stringify(p.c) === JSON.stringify(S.palette)) || {}).n;
+let customOpen = false;
+function dot(container, { label, bg, pressed, onClick, icon, cls = '' }) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'cdot ' + cls; b.style.background = bg;
+  b.title = label; b.setAttribute('aria-label', label); b.setAttribute('aria-pressed', String(pressed));
+  if (icon) b.innerHTML = icon;
+  b.addEventListener('click', onClick); container.appendChild(b); return b;
+}
+function paintColorBar() {
+  const box = $('cdots'); box.innerHTML = '';
+  const isCustom = S.colorMode === 'palette' && !presetName();
+  $('cname').textContent = S.colorMode === 'spectrum' ? 'Rainbow' : isCustom ? 'Custom' : presetName();
+  PALETTES.forEach(p => dot(box, { label: p.n, bg: conic(p.c), pressed: S.colorMode === 'palette' && presetName() === p.n,
+    onClick: () => { S.colorMode = 'palette'; S.palette = p.c.slice(); customOpen = false; syncUI(); render(); commit(); } }));
+  dot(box, { label: 'Rainbow', bg: RAINBOW, pressed: S.colorMode === 'spectrum',
+    onClick: () => { S.colorMode = 'spectrum'; customOpen = false; syncUI(); render(); commit(); } });
+  dot(box, { label: 'Custom colors', bg: isCustom ? conic(S.palette) : 'var(--card-2)', pressed: isCustom,
+    icon: isCustom ? '' : '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>',
+    onClick: () => { S.colorMode = 'palette'; S.palette = S.palette.slice(); customOpen = true; if (!isCustom) S.palette = S.palette.concat(); paintColorBar(); render(); } });
+  dot(box, { label: 'Colors from a photo', bg: 'var(--card-2)', pressed: false, onClick: () => $('imgFile').click(),
+    icon: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="2"/><circle cx="6" cy="7" r="1.3"/><path d="m3 12 3.5-3 2.5 2 2-1.5L13 12"/></svg>' });
+
+  // Extra controls next to the dots: a hue slider for Rainbow, editable swatches for Custom.
+  const ex = $('cextra'); ex.innerHTML = '';
+  if (S.colorMode === 'spectrum') {
+    const holder = document.createElement('div'); ex.appendChild(holder);
+    makeSlider(holder, 'hue', { min: 0, max: 359, step: 1, cls: 'hue' }); sliders.hue.paint();
+  } else if (customOpen || isCustom) {
+    S.palette.forEach((c, i) => {
+      const l = document.createElement('label'); l.className = 'cdot'; l.style.background = c; l.style.width = '30px'; l.style.height = '30px'; l.title = 'Change this color';
+      const inp = document.createElement('input'); inp.type = 'color'; inp.value = c; inp.setAttribute('aria-label', 'Custom color ' + (i + 1));
+      inp.addEventListener('input', () => { S.palette[i] = inp.value; l.style.background = inp.value; render(); });
+      inp.addEventListener('change', () => { customOpen = true; paintColorBar(); commit(); });
+      l.appendChild(inp); ex.appendChild(l);
+    });
+    if (S.palette.length < 6) {
+      const a = document.createElement('button'); a.type = 'button'; a.className = 'mini'; a.textContent = '+'; a.setAttribute('aria-label', 'Add a color');
+      a.addEventListener('click', () => { S.palette.push(hslHex(randi(0, 359), 70, 66)); customOpen = true; paintColorBar(); render(); commit(); });
+      ex.appendChild(a);
+    }
+    if (S.palette.length > 1) {
+      const r = document.createElement('button'); r.type = 'button'; r.className = 'mini'; r.textContent = '−'; r.setAttribute('aria-label', 'Remove the last color');
+      r.addEventListener('click', () => { S.palette.pop(); customOpen = true; paintColorBar(); render(); commit(); });
+      ex.appendChild(r);
+    }
+  }
+  ex.hidden = !ex.children.length;
+
+  const bgs = $('bgs'); bgs.innerHTML = '';
+  BGS.forEach(([c, name]) => dot(bgs, { label: name + ' background', bg: c, pressed: S.bgMode === 'color' && S.bgColor.toLowerCase() === c,
+    onClick: () => { S.bgMode = 'color'; S.bgColor = c; syncUI(); render(); commit(); } }));
+  const anyBg = BGS.some(([c]) => c === S.bgColor.toLowerCase());
+  const custom = document.createElement('label'); custom.className = 'cdot'; custom.title = 'Any background color';
+  const isCustomBg = S.bgMode === 'color' && !anyBg;
+  custom.style.background = isCustomBg ? S.bgColor : 'conic-gradient(#f88,#fd7,#7e9,#7cf,#c8f,#f88)';
+  if (isCustomBg) custom.style.boxShadow = '0 0 0 2px var(--bg), 0 0 0 4px var(--accent)';
+  const inp = document.createElement('input'); inp.type = 'color'; inp.value = S.bgColor; inp.setAttribute('aria-label', 'Custom background color');
+  inp.addEventListener('input', () => { S.bgMode = 'color'; S.bgColor = inp.value; custom.style.background = inp.value; render(); });
+  inp.addEventListener('change', () => { syncUI(); commit(); });
+  custom.appendChild(inp); bgs.appendChild(custom);
+  BG_GRADS.forEach((gr, gi) => dot(bgs, { label: gr.n + ' gradient', bg: `linear-gradient(135deg, ${gr.c.join(', ')})`, pressed: S.bgMode === 'gradient' && S.bgGrad === gi,
+    onClick: () => { S.bgMode = 'gradient'; S.bgGrad = gi; syncUI(); render(); commit(); } }));
+  dot(bgs, { label: 'See-through background', bg: '', cls: 'checker', pressed: S.bgMode === 'transparent', onClick: () => { S.bgMode = 'transparent'; syncUI(); render(); commit(); } });
+
+  $('blendChip').setAttribute('aria-pressed', String(S.colorApply === 'curve'));
+}
+$('blendChip').addEventListener('click', () => { S.colorApply = S.colorApply === 'curve' ? 'rose' : 'curve'; syncUI(); render(); commit(); });
+$('imgFile').addEventListener('change', e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, 64, 64);
+    const px = g.getImageData(0, 0, 64, 64).data, buckets = new Map();
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 128) continue;
+      const key = (px[i] >> 4) << 8 | (px[i + 1] >> 4) << 4 | (px[i + 2] >> 4);
+      const o = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+      o.n++; o.r += px[i]; o.g += px[i + 1]; o.b += px[i + 2]; buckets.set(key, o);
+    }
+    const cands = [...buckets.values()].map(o => {
+      const r = o.r / o.n, g2 = o.g / o.n, b = o.b / o.n, mx = Math.max(r, g2, b), mn = Math.min(r, g2, b);
+      return { r, g: g2, b, score: o.n * (0.25 + (mx - mn) / 255) * (mx > 30 ? 1 : 0.1) };
+    }).sort((a, b) => b.score - a.score);
+    const picked = [];
+    for (const c2 of cands) { if (picked.every(p => Math.hypot(p.r - c2.r, p.g - c2.g, p.b - c2.b) > 60)) picked.push(c2); if (picked.length === 5) break; }
+    URL.revokeObjectURL(url);
+    if (picked.length < 2) { toast('That photo doesn\'t have enough different colors'); return; }
+    S.palette = picked.map(p => rgbHex(p.r, p.g, p.b)); S.colorMode = 'palette'; customOpen = true;
+    syncUI(); render(); commit(); toast('Colors taken from your photo');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('That file isn\'t an image we can read'); };
+  img.src = url;
+});
+
+function syncUI() {
+  sliders.count.r.max = S.layout === 'center' ? 4 : 12;
+  for (const k in sliders) if (sliders[k].el.isConnected) sliders[k].paint();
+  document.querySelectorAll('[data-key]').forEach(b => b.setAttribute('aria-pressed', String(String(S[b.dataset.key]) === String(b.dataset.v))));
+  paintShapes();
+  $('fillSwitch').setAttribute('aria-checked', String(!!S.softFill));
+  paintColorBar(); paintChrome(); paintHiddenNote(); paintMotionUI(); paintSel();
+}
+
+// ---------- editing on the canvas ----------
+function editOf(i) { S.edits = S.edits || {}; return (S.edits[i] ||= { dx: 0, dy: 0, scale: 1, rot: 0 }); }
+function cleanEdit(i) { const e = S.edits && S.edits[i]; if (e && !e.dx && !e.dy && (e.scale ?? 1) === 1 && !e.rot && !e.n && !e.d && !e.hidden) delete S.edits[i]; }
+function deselectIfGone() { if (selected != null && selected >= S.count) select(null); }
+function canvasPoint(e) { const r = cv.getBoundingClientRect(), [W, H] = dimsOf(S); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+function roseAt(pt) {
+  const [W, H] = dimsOf(S); let best = null, bestA = Infinity;
+  buildRoses(S, W, H).forEach(r => {
+    if (r.hidden) return;
+    if (Math.hypot(pt.x - r.x, pt.y - r.y) < Math.max(r.A * 0.9, Math.min(W, H) * 0.03) && r.A < bestA) { best = r.i; bestA = r.A; }
+  });
+  return best;
+}
+function select(i) { selected = i; paintSel(); }
+function paintSel() {
+  const el = $('sel'), bar = $('selbar');
+  const r = selected == null ? null : buildRoses(S, ...dimsOf(S))[selected];
+  if (!r || r.hidden) { el.hidden = true; bar.hidden = true; return; }
+  const [W, H] = dimsOf(S);
+  el.hidden = false; bar.hidden = false;
+  el.style.left = (r.x / W * 100) + '%'; el.style.top = (r.y / H * 100) + '%';
+  el.style.width = (2 * r.A / W * 100) + '%'; el.style.height = (2 * r.A / H * 100) + '%';
+  bar.style.left = Math.max(12, Math.min(88, r.x / W * 100)) + '%';
+  bar.style.top = Math.min(92, (r.y + r.A) / H * 100) + '%';
+}
+function paintHiddenNote() {
+  const n = Object.keys(S.edits || {}).filter(k => +k < S.count && S.edits[k].hidden).length;
+  $('hiddenNote').hidden = !n; $('hiddenText').textContent = `${n} flower${n > 1 ? 's' : ''} removed`;
+}
+$('btnUnhide').addEventListener('click', () => { Object.keys(S.edits || {}).forEach(k => { delete S.edits[k].hidden; cleanEdit(k); }); syncUI(); bloom(); commit(); });
+$('selReset').addEventListener('click', () => { if (selected == null) return; delete S.edits[selected]; render(); commit(); });
+$('selRemove').addEventListener('click', () => { if (selected == null) return; editOf(selected).hidden = true; select(null); syncUI(); render(); commit(); toast('Removed. Undo brings it back.'); });
+$('selDone').addEventListener('click', () => select(null));
+function paintSnap(lines) {
+  $('gSnap').innerHTML = lines.map(l => l.x != null ? `<line x1="${l.x}" y1="0" x2="${l.x}" y2="100"/>` : `<line x1="0" y1="${l.y}" x2="100" y2="${l.y}"/>`).join('');
+}
+const pointers = new Map(); let drag = null;
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, canvasPoint(e));
+  closePops();
+  if (pointers.size === 1) {
+    const pt = canvasPoint(e), i = roseAt(pt);
+    if (i == null) { select(null); drag = null; return; }
+    select(i);
+    const [W, H] = dimsOf(S), rs = buildRoses(S, W, H), orig = { ...editOf(i) };
+    drag = { mode: 'move', i, start: pt, orig, base: { x: rs[i].x - (orig.dx || 0) * W, y: rs[i].y - (orig.dy || 0) * H }, others: rs.filter(o => o.i !== i && !o.hidden) };
+    $('frame').classList.add('dragging');
+  } else if (pointers.size === 2 && selected != null) {
+    const [a, b] = [...pointers.values()];
+    drag = { mode: 'pinch', i: selected, d0: Math.hypot(b.x - a.x, b.y - a.y), a0: Math.atan2(b.y - a.y, b.x - a.x), orig: { ...editOf(selected) } };
+  }
+});
+cv.addEventListener('pointermove', e => {
+  const pt = canvasPoint(e);
+  if (!pointers.has(e.pointerId)) {
+    const i = e.pointerType === 'mouse' ? roseAt(pt) : null;
+    cv.classList.toggle('over', i != null);
+    if (i !== hoverIdx) { hoverIdx = i; render(); }
+    return;
+  }
+  pointers.set(e.pointerId, pt);
+  if (!drag) return;
+  const [W, H] = dimsOf(S), ed = editOf(drag.i);
+  if (drag.mode === 'move' && pointers.size === 1) {
+    let nx = drag.base.x + (drag.orig.dx || 0) * W + (pt.x - drag.start.x);
+    let ny = drag.base.y + (drag.orig.dy || 0) * H + (pt.y - drag.start.y);
+    const lines = [];
+    if (!e.altKey) {
+      const thr = 8 * W / cv.getBoundingClientRect().width;
+      const near = (v, cands) => cands.reduce((b, c) => Math.abs(c - v) < thr && (b == null || Math.abs(c - v) < Math.abs(b - v)) ? c : b, null);
+      const sx = near(nx, [W / 2, W / 3, 2 * W / 3, ...drag.others.map(o => o.x)]);
+      const sy = near(ny, [H / 2, H / 3, 2 * H / 3, ...drag.others.map(o => o.y)]);
+      if (sx != null) { nx = sx; lines.push({ x: sx / W * 100 }); }
+      if (sy != null) { ny = sy; lines.push({ y: sy / H * 100 }); }
+    }
+    paintSnap(lines);
+    ed.dx = (nx - drag.base.x) / W; ed.dy = (ny - drag.base.y) / H;
+  } else if (drag.mode === 'pinch' && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    ed.scale = Math.max(0.1, Math.min(3, drag.orig.scale * Math.hypot(b.x - a.x, b.y - a.y) / drag.d0));
+    ed.rot = drag.orig.rot + (Math.atan2(b.y - a.y, b.x - a.x) - drag.a0) * 180 / Math.PI;
+  }
+  render();
+});
+cv.addEventListener('pointerleave', () => { if (hoverIdx != null) { hoverIdx = null; cv.classList.remove('over'); render(); } });
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0) {
+    $('frame').classList.remove('dragging'); paintSnap([]);
+    if (drag) { cleanEdit(drag.i); drag = null; commit(); }
+  }
+}
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+let wheelT;
+cv.addEventListener('wheel', e => {
+  if (selected == null) return;
+  e.preventDefault();
+  const ed = editOf(selected);
+  if (e.shiftKey) ed.rot = (ed.rot || 0) + (e.deltaY || e.deltaX) * 0.15;
+  else ed.scale = Math.max(0.1, Math.min(3, (ed.scale ?? 1) * Math.exp(-e.deltaY * 0.0015)));
+  render();
+  clearTimeout(wheelT); wheelT = setTimeout(() => { cleanEdit(selected); commit(); }, 300);
+}, { passive: false });
+
+// ---------- undo / history ----------
+let undo = [], ptr = -1;
+function commit() {
+  const j = JSON.stringify(S);
+  if (undo[ptr] === j) return;
+  undo = undo.slice(0, ptr + 1); undo.push(j);
+  if (undo.length > 120) undo.shift();
+  ptr = undo.length - 1; paintUndo(); persist(); markCurrent();
+}
+function restore(state) { S = { ...clone(DEFAULTS), ...upgrade(clone(state)) }; customOpen = false; deselectIfGone(); sizePreview(); syncUI(); render(); markCurrent(); }
+function step(dir) { const np = ptr + dir; if (np < 0 || np >= undo.length) return; ptr = np; restore(JSON.parse(undo[ptr])); paintUndo(); persist(); }
+function paintUndo() { $('btnUndo').disabled = ptr <= 0; $('btnRedo').disabled = ptr >= undo.length - 1; }
+$('btnUndo').addEventListener('click', () => step(-1));
+$('btnRedo').addEventListener('click', () => step(1));
+
+let tab = 'recent';
+function pushRecent() { recent.unshift(clone(S)); if (recent.length > 20) recent.pop(); if (tab === 'recent') paintStrip(); }
+function thumbFor(P, longEdge = 96) {
+  P = { ...clone(DEFAULTS), ...upgrade(clone(P)) };
+  const [W, H] = dimsOf(P), k = longEdge / Math.max(W, H), w = Math.round(W * k), h = Math.round(H * k);
+  const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2;
+  drawScene(c.getContext('2d'), w * 2, h * 2, P, { detail: 0.35 });
+  return c;
+}
+function paintStrip() {
+  const strip = $('strip'); strip.innerHTML = '';
+  const list = tab === 'recent' ? recent.map(state => ({ state }))
+    : starred;
+  if (!list.length) {
+    const e = document.createElement('span'); e.className = 'empty';
+    e.textContent = tab === 'recent' ? 'Shuffle a few times. Your favorites wait here.' : 'Tap the star to keep a look.';
+    strip.appendChild(e); return;
+  }
+  list.forEach((item, i) => {
+    const P = item.state, b = document.createElement('button'); b.type = 'button'; b.className = 'thumb';
+    b.dataset.state = JSON.stringify(P);
+    b.setAttribute('aria-label', item.name ? `Saved look ${item.name}` : `Recent look ${i + 1}`);
+    b.appendChild(thumbFor(P));
+    b.addEventListener('click', () => { restore(P); bloom(); commit(); });
+    if (item.name) { const cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = item.name; b.appendChild(cap); }
+    if (tab === 'saved') {
+      const x = document.createElement('span'); x.className = 'x'; x.textContent = '×'; x.setAttribute('role', 'button'); x.setAttribute('aria-label', `Delete ${item.name}`);
+      x.addEventListener('click', ev => { ev.stopPropagation(); starred.splice(i, 1); persist(); paintStrip(); });
+      b.appendChild(x);
+    }
+    strip.appendChild(b);
+  });
+  markCurrent();
+}
+function markCurrent() {
+  const j = JSON.stringify(S);
+  document.querySelectorAll('.thumb').forEach(t => t.classList.toggle('current', t.dataset.state === j));
+  const on = starred.some(p => JSON.stringify(p.state) === j);
+  $('btnStar').style.color = on ? 'var(--accent)' : '';
+  $('btnStar').querySelector('path').setAttribute('fill', on ? 'currentColor' : 'none');
+}
+function setTab(t) {
+  tab = t;
+  [['tabRecent', 'recent'], ['tabSaved', 'saved']].forEach(([id, v]) => $(id).setAttribute('aria-pressed', String(t === v)));
+  paintStrip();
+}
+$('tabRecent').addEventListener('click', () => setTab('recent'));
+$('tabSaved').addEventListener('click', () => setTab('saved'));
+$('btnStar').addEventListener('click', e => {
+  e.stopPropagation();
+  const j = JSON.stringify(S), i = starred.findIndex(p => JSON.stringify(p.state) === j);
+  if (i >= 0) { starred.splice(i, 1); persist(); setTab('saved'); markCurrent(); toast('Removed from saved'); return; }
+  const snap = clone(S), pop = $('namePop'), r = $('btnStar').getBoundingClientRect();
+  closePops(); pop.hidden = false;
+  $('nameInput').value = `Look ${starred.length + 1}`;
+  pop.style.left = Math.max(16, Math.min(window.innerWidth - pop.offsetWidth - 16, r.left)) + 'px';
+  pop.style.top = Math.max(16, r.top - pop.offsetHeight - 8) + 'px';
+  $('nameInput').focus(); $('nameInput').select();
+  pop.onsubmit = ev => {
+    ev.preventDefault(); pop.hidden = true;
+    const name = ($('nameInput').value.trim() || `Look ${starred.length + 1}`).slice(0, 40);
+    starred.unshift({ name, state: snap }); if (starred.length > 60) starred.pop();
+    persist(); setTab('saved'); toast(`Saved “${name}”`);
+  };
+});
+$('nameCancel').addEventListener('click', () => { $('namePop').hidden = true; });
+
+// ---------- shuffle / variations ----------
+// Shuffle picks fresh, tasteful values for everything that isn't pinned. Effects and background stay as you set them.
+function mutate(P0) {
+  const P = clone(P0);
+  if (!locks.flower) {
+    if (Math.random() < 0.65) { const [n, d] = pick(SHAPES); P.k = n / d; P.turns = period(n, d) / (Math.PI * 2); }
+    else { P.k = Math.round(rand(1, 8) * 100) / 100; P.turns = pick([2, 3, 4, 6, 8]); }
+    P.offset = Math.random() < 0.25 ? Math.round(rand(-0.5, 0.5) * 100) / 100 : 0;
+    P.strokeStyle = pick(['solid', 'solid', 'solid', 'dashed', 'dotted']);
+    P.lineWidth = P.strokeStyle === 'gloss' ? pick([2, 2.5, 3, 3.5]) : pick([1, 1.5, 1.75, 2, 2.5, 3]); P.glow = pick([0, 3, 5, 8]);
+    P.softFill = Math.random() < 0.7;
+  }
+  if (!locks.garden) {
+    P.layout = pick(['center', 'ring', 'ring', 'grid', 'scatter', 'scatter']);
+    P.count = P.layout === 'center' ? randi(1, 3) : randi(3, 9);
+    P.size = randi(70, 100); P.spread = 60; P.variety = 0; P.twist = randi(6, 20);
+    P.seed = Math.floor(Math.random() * 1e9); P.edits = {};
+  }
+  if (!locks.flower) P.layers = P.layout === 'center' ? randi(1, 2) : pick([1, 1, 1, 2]);
+  if (!locks.color) {
+    if (Math.random() < 0.25) { P.colorMode = 'spectrum'; P.hue = randi(0, 359); P.hueSpread = pick([40, 80, 140, 220]); }
+    else { P.colorMode = 'palette'; P.palette = pick(PALETTES).c.slice(); }
+    P.colorApply = Math.random() < 0.2 ? 'curve' : 'rose';
+  }
+  // With the kaleidoscope on, Shuffle also finds a new slice of the garden to reflect (unless pinned).
+  if (!locks.effects && P.symmetry !== 'none') { P.kTurn = randi(0, 359); P.kZoom = randi(70, 150); }
+  return P;
+}
+function shuffle() { S = mutate(S); customOpen = false; select(null); syncUI(); bloom(); commit(); pushRecent(); }
+$('btnShuffle').addEventListener('click', shuffle);
+$('btnSpawn').addEventListener('click', () => { S.seed = Math.floor(Math.random() * 1e9); S.twist = randi(6, 20); S.edits = {}; select(null); syncUI(); bloom(); commit(); pushRecent(); });
+
+const modal = $('varModal'); let lastFocus = null;
+function openVariations() { lastFocus = document.activeElement; modal.hidden = false; fillVariations(); $('varShuffle').focus(); }
+function closeVariations() { modal.hidden = true; lastFocus && lastFocus.focus && lastFocus.focus(); }
+function fillVariations() {
+  const grid = $('varGrid'); grid.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const P = mutate(S), b = document.createElement('button'); b.type = 'button'; b.className = 'var';
+    b.style.background = bgCss(P); b.style.animationDelay = (i * 40) + 'ms';
+    b.setAttribute('aria-label', 'Variation ' + (i + 1));
+    b.appendChild(thumbFor(P, 300));
+    b.addEventListener('click', () => { S = P; customOpen = false; select(null); syncUI(); bloom(); commit(); pushRecent(); closeVariations(); });
+    grid.appendChild(b);
+  }
+}
+$('btnVariations').addEventListener('click', openVariations);
+$('varShuffle').addEventListener('click', fillVariations);
+$('varClose').addEventListener('click', closeVariations);
+modal.addEventListener('click', e => { if (e.target === modal) closeVariations(); });
+
+// ---------- play / pause ----------
+function paintPlay() {
+  const on = !!prefs.playing;
+  $('btnPlay').setAttribute('aria-pressed', String(on));
+  $('btnPlay').title = on ? 'Pause the motion' : 'Play the motion';
+  $('playIcon').innerHTML = on ? '<rect x="5" y="4.5" width="3.5" height="11" rx="1"/><rect x="11.5" y="4.5" width="3.5" height="11" rx="1"/>' : '<path d="M6 4.5v11l9-5.5z"/>';
+}
+$('btnPlay').addEventListener('click', () => {
+  prefs.playing = !prefs.playing; paintPlay(); persist();
+  if (prefs.playing && !anyMotion(S)) toast('Pick a motion in the Motion card');
+  render();
+});
+
+// ---------- keyboard ----------
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (!modal.hidden) closeVariations(); else if (selected != null) select(null); closePops(); return; }
+  if (!modal.hidden || e.target.closest('textarea, input:not([type=range])')) return;
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); step(e.shiftKey ? 1 : -1); return; }
+  if (mod) return;
+  if (e.code === 'Space') { e.preventDefault(); $('btnPlay').click(); }
+  else if (e.key === 's' || e.key === 'S') shuffle();
+  else if (e.key === 'v' || e.key === 'V') openVariations();
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && selected != null) $('selRemove').click();
+});
+
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1900); }
+
+// ---------- boot ----------
+paintPins(); paintPlay(); sizePreview(); syncUI(); commit(); paintStrip(); bloom();
+requestAnimationFrame(fitFrame);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render());
+})();
+</script>
